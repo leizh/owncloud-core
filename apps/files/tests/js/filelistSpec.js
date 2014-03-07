@@ -570,18 +570,6 @@ describe('FileList tests', function() {
 			expect(getImageUrl($td)).toEqual(OC.webroot + '/core/img/filetypes/application-pdf.svg');
 			expect(previewLoadStub.notCalled).toEqual(true);
 		});
-		it('renders provided icon, even when preview when available', function() {
-			var fileData = {
-				type: 'file',
-				name: 'test dir',
-				icon: OC.webroot + '/core/img/filetypes/application-pdf.svg',
-				isPreviewAvailable: true
-			};
-			var $tr = FileList.add(fileData);
-			var $td = $tr.find('td.filename');
-			expect(getImageUrl($td)).toEqual(OC.webroot + '/core/img/filetypes/application-pdf.svg');
-			expect(previewLoadStub.notCalled).toEqual(true);
-		});
 		it('renders preview when no icon was provided and preview is available', function() {
 			var fileData = {
 				type: 'file',

@@ -70,11 +70,6 @@ $formattedFiles = array();
 foreach ($files as $file) {
 	unset($file['directory']); // for now
 	$file['permissions'] = \OCP\PERMISSION_READ;
-	if (isset($file['isPreviewAvailable']) && $file['isPreviewAvailable']) {
-		$file['icon'] = \OC_Helper::publicPreviewIcon(
-			$relativePath . '/' . $file['name'], $token
-		) . '&c=' . $file['etag'];
-	}
 	$formattedFiles[] = $file;
 }
 

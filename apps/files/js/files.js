@@ -656,28 +656,24 @@ function getPathForPreview(name) {
  * @return preview URL
  */
 Files.generatePreviewUrl = function(urlSpec) {
+	urlSpec = urlSpec || {};
+	if (!urlSpec.x) {
+		urlSpec.x = $('#filestable').data('preview-x');
+	}
+	if (!urlSpec.y) {
+		urlSpec.y = $('#filestable').data('preview-y');
+	}
+	urlSpec.forceIcon = 0;
 	return OC.generateUrl('/core/preview.png?') + $.param(urlSpec);
 }
 
 Files.lazyLoadPreview = function(path, mime, ready, width, height, etag) {
 	// get mime icon url
 	Files.getMimeIcon(mime, function(iconURL) {
-		var urlSpec = {};
 		var previewURL;
+			urlSpec = {};
 		ready(iconURL); // set mimeicon URL
 
-		// now try getting a preview thumbnail URL
-		if ( ! width ) {
-			width = $('#filestable').data('preview-x');
-		}
-		if ( ! height ) {
-			height = $('#filestable').data('preview-y');
-		}
-		// note: the order of arguments must match the one
-		// from the server's template so that the browser
-		// knows it's the same file for caching
-		urlSpec.x = width;
-		urlSpec.y = height;
 		urlSpec.file = Files.fixPath(path);
 
 		if (etag){
@@ -691,7 +687,6 @@ Files.lazyLoadPreview = function(path, mime, ready, width, height, etag) {
 		previewURL = Files.generatePreviewUrl(urlSpec);
 		previewURL = previewURL.replace('(', '%28');
 		previewURL = previewURL.replace(')', '%29');
-		previewURL += '&forceIcon=0';
 
 		// preload image to prevent delay
 		// this will make the browser cache the image

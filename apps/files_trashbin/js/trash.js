@@ -226,6 +226,10 @@ $(document).ready(function() {
 		return OC.linkTo('files_trashbin', 'index.php')+"?dir=" + encodeURIComponent(part.dir);
 	};
 
+	Files.generatePreviewUrl = function(urlSpec) {
+		return OC.generateUrl('/apps/files_trashbin/ajax/preview.php?') + $.param(urlSpec);
+	};
+
 	Files.getDownloadUrl = function(action, params) {
 		// no downloads
 		return '#';

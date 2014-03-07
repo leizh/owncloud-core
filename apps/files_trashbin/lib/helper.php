@@ -45,7 +45,7 @@ class Helper
 
 		$files = array();
 		$id = 0;
-		$dirListing = true;
+		$dirListing = (rtrim($dir, '/') !== '');
 		foreach ($result as $r) {
 			$i = array();
 			$i['id'] = $id++;
@@ -62,20 +62,10 @@ class Helper
 			$i['directory'] = $r['location'];
 			if ($i['directory'] === '/') {
 				$i['directory'] = '';
-				$dirListing = false;
 			}
 			$i['permissions'] = \OCP\PERMISSION_READ;
 			$i['isPreviewAvailable'] = \OC::$server->getPreviewManager()->isMimeSupported($r['mime']);
-			if($i['isPreviewAvailable']) {
-				$pathForPreview = $i['directory'] . '/' . $i['name'];
-				if (!$dirListing) {
-					$pathForPreview .= '.d' . $i['timestamp'];
-				}
-				$i['icon'] = \OCA\Files_Trashbin\Trashbin::preview_icon($pathForPreview);
-			}
-			else {
-				$i['icon'] = \OCA\Files\Helper::determineIcon($i);
-			}
+			$i['icon'] = \OCA\Files\Helper::determineIcon($i);
 			$files[] = $i;
 		}
 

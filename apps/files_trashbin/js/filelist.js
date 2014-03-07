@@ -1,4 +1,4 @@
-/* global OC, FileList */
+/* global OC, t, FileList */
 (function() {
 	FileList.appName = t('files_trashbin', 'Deleted files');
 

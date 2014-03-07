@@ -558,6 +558,13 @@ var OCdialogs = {
 					date: OC.mtime2date(Math.floor(entry.mtime / 1000))
 				});
 				$li.find('img').attr('src', entry.icon);
+				if (entry.isPreviewAvailable) {
+					var urlSpec = {
+						file: dir + '/' + entry.name
+					};
+					var previewUrl = OC.generateUrl('/core/preview.png?') + $.param(urlSpec);
+					$li.find('img').attr('src', previewUrl);
+				}
 				self.$filelist.append($li);
 			});
 

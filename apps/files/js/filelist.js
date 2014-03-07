@@ -319,10 +319,23 @@ window.FileList = {
 		// display actions
 		FileActions.display(filenameTd, false);
 
-		if (fileData.isPreviewAvailable && !fileData.icon) {
-			Files.lazyLoadPreview(getPathForPreview(fileData.name), mime, function(previewpath) {
-				filenameTd.attr('style','background-image:url('+previewpath+')');
-			}, null, null, fileData.etag);
+		if (fileData.isPreviewAvailable) {
+			// lazy load / newly inserted td ?
+			if (!fileData.icon) {
+				Files.lazyLoadPreview(getPathForPreview(fileData.name), mime, function(url) {
+					filenameTd.css('background-image', 'url(' + url + ')');
+				}, null, null, fileData.etag);
+			}
+			else {
+				// set the preview URL directly
+				var urlSpec = {
+						file: FileList.getCurrentDirectory() + '/' + fileData.name,
+						c: fileData.etag
+					};
+				var previewUrl = Files.generatePreviewUrl(urlSpec);
+				previewUrl = previewUrl.replace('(', '%28').replace(')', '%29');
+				filenameTd.css('background-image', 'url(' + previewUrl + ')');
+			}
 		}
 
 		// defaults to true if not defined
@@ -582,6 +595,7 @@ window.FileList = {
 			event.preventDefault();
 			try {
 				var newname = input.val();
+				var directory = FileList.getCurrentDirectory();
 				if (newname !== oldname) {
 					checkInput();
 					// save background image, because it's replaced by a spinner while async request
@@ -624,7 +638,7 @@ window.FileList = {
 								tr.attr('data-mime', fileInfo.mime);
 								tr.attr('data-etag', fileInfo.etag);
 								if (fileInfo.isPreviewAvailable) {
-									Files.lazyLoadPreview(fileInfo.directory + '/' + fileInfo.name, result.data.mime, function(previewpath) {
+									Files.lazyLoadPreview(directory + '/' + fileInfo.name, result.data.mime, function(previewpath) {
 										tr.find('td.filename').attr('style','background-image:url('+previewpath+')');
 									}, null, null, result.data.etag);
 								}
