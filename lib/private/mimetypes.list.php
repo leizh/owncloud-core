@@ -76,6 +76,8 @@ return array(
 	'avi'=>'video/x-msvideo',
 	'dv'=>'video/dv',
 	'm2t'=>'video/mp2t',
+	'mka' => 'audio/x-matroska',
+	'mkv' => 'video/x-matroska',
 	'mp4'=>'video/mp4',
 	'm4v'=>'video/mp4',
 	'mpg'=>'video/mpeg',
