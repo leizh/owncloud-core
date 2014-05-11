@@ -274,6 +274,32 @@ class OC_Helper {
 	}
 
 	/**
+	 * @brief Make a php file size
+	 * @param int $bytes file size in bytes
+	 * @return string a php parseable file size
+	 *
+	 * Makes 2048 to 2k and 2^41 to 2048G
+	 */
+	public static function phpFileSize($bytes) {
+		if ($bytes < 0) {
+			return "?";
+		}
+		if ($bytes < 1024) {
+			return $bytes . "B";
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return $bytes . "K";
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return $bytes . "M";
+		}
+		$bytes = round($bytes / 1024, 1);
+		return $bytes . "G";
+	}
+
+	/**
 	 * @brief Make a computer file size
 	 * @param string $str file size in a fancy format
 	 * @return int a file size in bytes
@@ -308,35 +334,6 @@ class OC_Helper {
 		$bytes = round($bytes, 2);
 
 		return $bytes;
-	}
-
-	/**
-	 * @brief Recursive editing of file permissions
-	 * @param string $path path to file or folder
-	 * @param int $filemode unix style file permissions
-	 * @return bool
-	 */
-	static function chmodr($path, $filemode) {
-		if (!is_dir($path))
-			return chmod($path, $filemode);
-		$dh = opendir($path);
-		if(is_resource($dh)) {
-			while (($file = readdir($dh)) !== false) {
-				if ($file != '.' && $file != '..') {
-					$fullpath = $path . '/' . $file;
-					if (is_link($fullpath))
-						return false;
-					elseif (!is_dir($fullpath) && !@chmod($fullpath, $filemode))
-						return false; elseif (!self::chmodr($fullpath, $filemode))
-						return false;
-				}
-			}
-			closedir($dh);
-		}
-		if (@chmod($path, $filemode))
-			return true;
-		else
-			return false;
 	}
 
 	/**
@@ -427,6 +424,16 @@ class OC_Helper {
 		return self::getMimetypeDetector()->detect($path);
 	}
 
+	/**
+	 * Get a secure mimetype that won't expose potential XSS.
+	 *
+	 * @param string $mimeType
+	 * @return string
+	 */
+	static function getSecureMimeType($mimeType) {
+		return self::getMimetypeDetector()->getSecureMimeType($mimeType);
+	}
+	
 	/**
 	 * get the mimetype form a data string
 	 *
