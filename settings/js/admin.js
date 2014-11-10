@@ -1,4 +1,37 @@
 $(document).ready(function(){
+	var params = OC.Util.History.parseUrlQuery();
+
+	// Hack to add a trusted domain
+	if (params.trustDomain) {
+		OC.dialogs.confirm(t('core', 'Are you really sure you want add "{domain}" as trusted domain?', {domain: params.trustDomain}),
+			t('core', 'Add trusted domain'), function(answer) {
+				if(answer) {
+					$.ajax({
+						type: 'POST',
+						url: OC.generateUrl('settings/ajax/setsecurity.php'),
+						data: { trustedDomain: params.trustDomain }
+					}).done(function() {
+						window.location.replace(OC.generateUrl('settings/admin'));
+					});
+				}
+			});
+	}
+
+
+	$('#excludedGroups').each(function (index, element) {
+		OC.Settings.setupGroupsSelect($(element));
+		$(element).change(function(ev) {
+			var groups = ev.val || [];
+			if (groups.length > 0) {
+				groups = ev.val.join(','); // FIXME: make this JSON
+			} else {
+				groups = '';
+			}
+			OC.AppConfig.setValue('core', $(this).attr('name'), groups);
+		});
+	});
+
+
 	$('#loglevel').change(function(){
 		$.post(OC.filePath('settings','ajax','setloglevel.php'), { level: $(this).val() },function(){
 			OC.Log.reload();
@@ -15,10 +48,10 @@ $(document).ready(function(){
 	});
 
 	$('#shareAPIEnabled').change(function() {
-		$('.shareAPI td:not(#enable)').toggle();
+		$('#shareAPI p:not(#enable)').toggleClass('hidden', !this.checked);
 	});
 
-	$('#shareAPI input').change(function() {
+	$('#shareAPI input:not(#excludedGroups)').change(function() {
 		if ($(this).attr('type') === 'checkbox') {
 			if (this.checked) {
 				var value = 'yes';
@@ -29,6 +62,15 @@ $(document).ready(function(){
 			var value = $(this).val();
 		}
 		OC.AppConfig.setValue('core', $(this).attr('name'), value);
+	});
+
+	$('#shareapiDefaultExpireDate').change(function() {
+		$("#setDefaultExpireDate").toggleClass('hidden', !this.checked);
+	});
+
+	$('#allowLinks').change(function() {
+		$("#publicLinkSettings").toggleClass('hidden', !this.checked);
+		$('#setDefaultExpireDate').toggleClass('hidden', !(this.checked && $('#shareapiDefaultExpireDate')[0].checked));
 	});
 
 	$('#security').change(function(){
@@ -61,19 +103,52 @@ $(document).ready(function(){
 		}
 	});
 
-	$('#mail_settings').change(function(){
+	$('#mail_general_settings').change(function(){
 		OC.msg.startSaving('#mail_settings_msg');
-		var post = $( "#mail_settings" ).serialize();
+		var post = $( "#mail_general_settings" ).serialize();
 		$.post(OC.generateUrl('/settings/admin/mailsettings'), post, function(data){
-			OC.msg.finishedSaving('#mail_settings .msg', data);
+			OC.msg.finishedSaving('#mail_settings_msg', data);
 		});
 	});
 
-	$('#sendtestemail').click(function(){
+	$('#mail_credentials_settings_submit').click(function(){
+		OC.msg.startSaving('#mail_settings_msg');
+		var post = $( "#mail_credentials_settings" ).serialize();
+		$.post(OC.generateUrl('/settings/admin/mailsettings/credentials'), post, function(data){
+			OC.msg.finishedSaving('#mail_settings_msg', data);
+		});
+	});
+
+	$('#sendtestemail').click(function(event){
+		event.preventDefault();
 		OC.msg.startAction('#sendtestmail_msg', t('settings', 'Sending...'));
-		var post = $( "#sendtestemail" ).serialize();
-		$.post(OC.generateUrl('/settings/admin/mailtest'), post, function(data){
+		$.post(OC.generateUrl('/settings/admin/mailtest'), '', function(data){
 			OC.msg.finishedAction('#sendtestmail_msg', data);
 		});
+	});
+
+	$('#shareapiExcludeGroups').change(function() {
+		$("#selectExcludedGroups").toggleClass('hidden', !this.checked);
+	});
+
+	// run setup checks then gather error messages
+	$.when(
+		OC.SetupChecks.checkWebDAV(),
+		OC.SetupChecks.checkSetup()
+	).then(function(check1, check2) {
+		var errors = [].concat(check1, check2);
+		var $el = $('#postsetupchecks');
+		var $errorsEl;
+		$el.find('.loading').addClass('hidden');
+		if (errors.length === 0) {
+			$el.find('.success').removeClass('hidden');
+		} else {
+			$errorsEl = $el.find('.errors');
+			for (var i = 0; i < errors.length; i++ ) {
+				$errorsEl.append('<div class="setupwarning">' + errors[i] + '</div>');
+			}
+			$errorsEl.removeClass('hidden');
+			$el.find('.hint').removeClass('hidden');
+		}
 	});
 });

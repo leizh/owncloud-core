@@ -31,12 +31,12 @@ class OC_Helper {
 	private static $templateManager;
 
 	/**
-	 * @brief Creates an url using a defined route
-	 * @param $route
+	 * Creates an url using a defined route
+	 * @param string $route
 	 * @param array $parameters
 	 * @return
 	 * @internal param array $args with param=>value, will be appended to the returned url
-	 * @returns the url
+	 * @return string the url
 	 *
 	 * Returns a url to the given app and file.
 	 */
@@ -45,7 +45,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Creates an url
+	 * Creates an url
 	 * @param string $app app
 	 * @param string $file file
 	 * @param array $args array with param=>value, will be appended to the returned url
@@ -68,7 +68,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Creates an absolute url
+	 * Creates an absolute url
 	 * @param string $app app
 	 * @param string $file file
 	 * @param array $args array with param=>value, will be appended to the returned url
@@ -78,12 +78,13 @@ class OC_Helper {
 	 * Returns a absolute url to the given app and file.
 	 */
 	public static function linkToAbsolute($app, $file, $args = array()) {
-		$urlLinkTo = self::linkTo($app, $file, $args);
-		return self::makeURLAbsolute($urlLinkTo);
+		return OC::$server->getURLGenerator()->getAbsoluteURL(
+			self::linkTo($app, $file, $args)
+		);
 	}
 
 	/**
-	 * @brief Makes an $url absolute
+	 * Makes an $url absolute
 	 * @param string $url the url
 	 * @return string the absolute url
 	 *
@@ -94,7 +95,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Creates an url for remote use
+	 * Creates an url for remote use
 	 * @param string $service id
 	 * @return string the url
 	 *
@@ -105,7 +106,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Creates an absolute url for remote use
+	 * Creates an absolute url for remote use
 	 * @param string $service id
 	 * @param bool $add_slash
 	 * @return string the url
@@ -113,12 +114,14 @@ class OC_Helper {
 	 * Returns a absolute url to the given service.
 	 */
 	public static function linkToRemote($service, $add_slash = true) {
-		return self::makeURLAbsolute(self::linkToRemoteBase($service))
-		. (($add_slash && $service[strlen($service) - 1] != '/') ? '/' : '');
+		return OC::$server->getURLGenerator()->getAbsoluteURL(
+			self::linkToRemoteBase($service)
+				. (($add_slash && $service[strlen($service) - 1] != '/') ? '/' : '')
+		);
 	}
 
 	/**
-	 * @brief Creates an absolute url for public use
+	 * Creates an absolute url for public use
 	 * @param string $service id
 	 * @param bool $add_slash
 	 * @return string the url
@@ -126,12 +129,16 @@ class OC_Helper {
 	 * Returns a absolute url to the given service.
 	 */
 	public static function linkToPublic($service, $add_slash = false) {
-		return self::linkToAbsolute('', 'public.php') . '?service=' . $service
-		. (($add_slash && $service[strlen($service) - 1] != '/') ? '/' : '');
+		return OC::$server->getURLGenerator()->getAbsoluteURL(
+			self::linkTo(
+				'', 'public.php') . '?service=' . $service
+				. (($add_slash && $service[strlen($service) - 1] != '/') ? '/' : ''
+			)
+		);
 	}
 
 	/**
-	 * @brief Creates path to an image
+	 * Creates path to an image
 	 * @param string $app app
 	 * @param string $image image name
 	 * @return string the url
@@ -143,7 +150,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief get path to icon of file type
+	 * get path to icon of file type
 	 * @param string $mimetype mimetype
 	 * @return string the url
 	 *
@@ -257,7 +264,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief get path to preview of file
+	 * get path to preview of file
 	 * @param string $path path
 	 * @return string the url
 	 *
@@ -272,7 +279,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Make a human file size
+	 * Make a human file size
 	 * @param int $bytes file size in bytes
 	 * @return string a human readable file size
 	 *
@@ -307,8 +314,34 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Make a computer file size
-	 * @param string $str file size in a fancy format
+	 * Make a php file size
+	 * @param int $bytes file size in bytes
+	 * @return string a php parseable file size
+	 *
+	 * Makes 2048 to 2k and 2^41 to 2048G
+	 */
+	public static function phpFileSize($bytes) {
+		if ($bytes < 0) {
+			return "?";
+		}
+		if ($bytes < 1024) {
+			return $bytes . "B";
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return $bytes . "K";
+		}
+		$bytes = round($bytes / 1024, 1);
+		if ($bytes < 1024) {
+			return $bytes . "M";
+		}
+		$bytes = round($bytes / 1024, 1);
+		return $bytes . "G";
+	}
+
+	/**
+	 * Make a computer file size
+	 * @param string $str file size in human readable format
 	 * @return int a file size in bytes
 	 *
 	 * Makes 2kB to 2048.
@@ -338,42 +371,13 @@ class OC_Helper {
 			$bytes *= $bytes_array[$matches[1]];
 		}
 
-		$bytes = round($bytes, 2);
+		$bytes = round($bytes);
 
 		return $bytes;
 	}
 
 	/**
-	 * @brief Recursive editing of file permissions
-	 * @param string $path path to file or folder
-	 * @param int $filemode unix style file permissions
-	 * @return bool
-	 */
-	static function chmodr($path, $filemode) {
-		if (!is_dir($path))
-			return chmod($path, $filemode);
-		$dh = opendir($path);
-		if(is_resource($dh)) {
-			while (($file = readdir($dh)) !== false) {
-				if ($file != '.' && $file != '..') {
-					$fullpath = $path . '/' . $file;
-					if (is_link($fullpath))
-						return false;
-					elseif (!is_dir($fullpath) && !@chmod($fullpath, $filemode))
-						return false; elseif (!self::chmodr($fullpath, $filemode))
-						return false;
-				}
-			}
-			closedir($dh);
-		}
-		if (@chmod($path, $filemode))
-			return true;
-		else
-			return false;
-	}
-
-	/**
-	 * @brief Recursive copying of folders
+	 * Recursive copying of folders
 	 * @param string $src source folder
 	 * @param string $dest target folder
 	 *
@@ -395,16 +399,23 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Recursive deletion of folders
+	 * Recursive deletion of folders
 	 * @param string $dir path to the folder
 	 * @return bool
 	 */
 	static function rmdirr($dir) {
 		if (is_dir($dir)) {
-			$files = scandir($dir);
-			foreach ($files as $file) {
-				if ($file != "." && $file != "..") {
-					self::rmdirr("$dir/$file");
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::CHILD_FIRST
+			);
+
+			foreach ($files as $fileInfo) {
+				/** @var SplFileInfo $fileInfo */
+				if ($fileInfo->isDir()) {
+					rmdir($fileInfo->getRealPath());
+				} else {
+					unlink($fileInfo->getRealPath());
 				}
 			}
 			rmdir($dir);
@@ -461,6 +472,16 @@ class OC_Helper {
 	}
 
 	/**
+	 * Get a secure mimetype that won't expose potential XSS.
+	 *
+	 * @param string $mimeType
+	 * @return string
+	 */
+	static function getSecureMimeType($mimeType) {
+		return self::getMimetypeDetector()->getSecureMimeType($mimeType);
+	}
+
+	/**
 	 * get the mimetype form a data string
 	 *
 	 * @param string $data
@@ -471,7 +492,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Checks $_REQUEST contains a var for the $s key. If so, returns the html-escaped value of this var; otherwise returns the default value provided by $d.
+	 * Checks $_REQUEST contains a var for the $s key. If so, returns the html-escaped value of this var; otherwise returns the default value provided by $d.
 	 * @param string $s name of the var to escape, if set.
 	 * @param string $d default value.
 	 * @return string the print-safe value.
@@ -481,7 +502,7 @@ class OC_Helper {
 	/**
 	 * detect if a given program is found in the search PATH
 	 *
-	 * @param $name
+	 * @param string $name
 	 * @param bool $path
 	 * @internal param string $program name
 	 * @internal param string $optional search path, defaults to $PATH
@@ -557,8 +578,20 @@ class OC_Helper {
 	public static function tmpFile($postfix = '') {
 		$file = get_temp_dir() . '/' . md5(time() . rand()) . $postfix;
 		$fh = fopen($file, 'w');
-		fclose($fh);
-		self::$tmpFiles[] = $file;
+		if ($fh!==false){
+			fclose($fh);
+			self::$tmpFiles[] = $file;
+		} else {
+			OC_Log::write(
+				'OC_Helper',
+				sprintf(
+					'Can not create a temporary file in directory %s. Check it exists and has correct permissions',
+					get_temp_dir()
+				),
+				OC_Log::WARN
+			);
+			$file = false;
+		}
 		return $file;
 	}
 
@@ -610,15 +643,33 @@ class OC_Helper {
 		if (file_exists($leftoversFile)) {
 			$leftovers = file($leftoversFile);
 			foreach ($leftovers as $file) {
-				self::rmdirr($file);
+				try {
+					self::rmdirr($file);
+				} catch (UnexpectedValueException $ex) {
+					// not really much we can do here anymore
+					if (!is_null(\OC::$server)) {
+						$message = $ex->getMessage();
+						\OC::$server->getLogger()->error("Error deleting file/folder: $file - Reason: $message",
+							array('app' => 'core'));
+					}
+				}
 			}
 			unlink($leftoversFile);
 		}
 
 		foreach (self::$tmpFiles as $file) {
 			if (file_exists($file)) {
-				if (!self::rmdirr($file)) {
-					file_put_contents($leftoversFile, $file . "\n", FILE_APPEND);
+				try {
+					if (!self::rmdirr($file)) {
+						file_put_contents($leftoversFile, $file . "\n", FILE_APPEND);
+					}
+				} catch (UnexpectedValueException $ex) {
+					// not really much we can do here anymore
+					if (!is_null(\OC::$server)) {
+						$message = $ex->getMessage();
+						\OC::$server->getLogger()->error("Error deleting file/folder: $file - Reason: $message",
+							array('app' => 'core'));
+					}
 				}
 			}
 		}
@@ -656,8 +707,8 @@ class OC_Helper {
 	/**
 	 * Adds a suffix to the name in case the file exists
 	 *
-	 * @param $path
-	 * @param $filename
+	 * @param string $path
+	 * @param string $filename
 	 * @return string
 	 */
 	public static function buildNotExistingFileName($path, $filename) {
@@ -668,8 +719,8 @@ class OC_Helper {
 	/**
 	 * Adds a suffix to the name in case the file exists
 	 *
-	 * @param $path
-	 * @param $filename
+	 * @param string $path
+	 * @param string $filename
 	 * @return string
 	 */
 	public static function buildNotExistingFileNameForView($path, $filename, \OC\Files\View $view) {
@@ -712,21 +763,33 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Checks if $sub is a subdirectory of $parent
+	 * Checks if $sub is a subdirectory of $parent
 	 *
 	 * @param string $sub
 	 * @param string $parent
 	 * @return bool
 	 */
-	public static function issubdirectory($sub, $parent) {
-		if (strpos(realpath($sub), realpath($parent)) === 0) {
+	public static function isSubDirectory($sub, $parent) {
+		$realpathSub = realpath($sub);
+		$realpathParent = realpath($parent);
+
+		// realpath() may return false in case the directory does not exist
+		// since we can not be sure how different PHP versions may behave here
+		// we do an additional check whether realpath returned false
+		if($realpathSub === false ||  $realpathParent === false) {
+			return false;
+		}
+
+		// Check whether $sub is a subdirectory of $parent
+		if (strpos($realpathSub, $realpathParent) === 0) {
 			return true;
 		}
+
 		return false;
 	}
 
 	/**
-	 * @brief Returns an array with all keys from input lowercased or uppercased. Numbered indices are left as is.
+	 * Returns an array with all keys from input lowercased or uppercased. Numbered indices are left as is.
 	 *
 	 * @param array $input The array to work on
 	 * @param int $case Either MB_CASE_UPPER or MB_CASE_LOWER (default)
@@ -747,9 +810,9 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief replaces a copy of string delimited by the start and (optionally) length parameters with the string given in replacement.
+	 * replaces a copy of string delimited by the start and (optionally) length parameters with the string given in replacement.
 	 *
-	 * @param $string
+	 * @param string $string
 	 * @param string $replacement The replacement string.
 	 * @param int $start If start is positive, the replacing will begin at the start'th offset into string. If start is negative, the replacing will begin at the start'th character from the end of string.
 	 * @param int $length Length of the part to be replaced
@@ -768,7 +831,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief Replace all occurrences of the search string with the replacement string
+	 * Replace all occurrences of the search string with the replacement string
 	 *
 	 * @param string $search The value being searched for, otherwise known as the needle.
 	 * @param string $replace The replacement
@@ -790,7 +853,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief performs a search in a nested array
+	 * performs a search in a nested array
 	 * @param array $haystack the array to be searched
 	 * @param string $needle the search string
 	 * @param string $index optional, only search this key name
@@ -832,7 +895,7 @@ class OC_Helper {
 	}
 
 	/**
-	 * @brief calculates the maximum upload size respecting system settings, free space and user quota
+	 * calculates the maximum upload size respecting system settings, free space and user quota
 	 *
 	 * @param string $dir the current folder where the user currently operates
 	 * @param int $freeSpace the number of bytes free on the storage holding $dir, if not set this will be received from the storage directly
@@ -847,7 +910,7 @@ class OC_Helper {
 
 	/**
 	 * Calculate free space left within user quota
-	 * 
+	 *
 	 * @param string $dir the current folder where the user currently operates
 	 * @return int number of bytes representing
 	 */
@@ -905,22 +968,48 @@ class OC_Helper {
 	 * Calculate the disc space for the given path
 	 *
 	 * @param string $path
+	 * @param \OCP\Files\FileInfo $rootInfo (optional)
 	 * @return array
 	 */
-	public static function getStorageInfo($path) {
+	public static function getStorageInfo($path, $rootInfo = null) {
 		// return storage info without adding mount points
-		$rootInfo = \OC\Files\Filesystem::getFileInfo($path, false);
-		$used = $rootInfo['size'];
+		$includeExtStorage = \OC_Config::getValue('quota_include_external_storage', false);
+
+		if (!$rootInfo) {
+			$rootInfo = \OC\Files\Filesystem::getFileInfo($path, false);
+		}
+		$used = $rootInfo->getSize();
 		if ($used < 0) {
 			$used = 0;
 		}
-		$free = \OC\Files\Filesystem::free_space($path);
+		$quota = 0;
+		$storage = $rootInfo->getStorage();
+		if ($includeExtStorage && $storage->instanceOfStorage('\OC\Files\Storage\Shared')) {
+			$includeExtStorage = false;
+		}
+		if ($includeExtStorage) {
+			$quota = OC_Util::getUserQuota(\OCP\User::getUser());
+			if ($quota !== \OC\Files\SPACE_UNLIMITED) {
+				// always get free space / total space from root + mount points
+				$path = '';
+				return self::getGlobalStorageInfo();
+			}
+		}
+
+		// TODO: need a better way to get total space from storage
+		if ($storage->instanceOfStorage('\OC\Files\Storage\Wrapper\Quota')) {
+			$quota = $storage->getQuota();
+		}
+		$free = $storage->free_space('');
 		if ($free >= 0) {
 			$total = $free + $used;
 		} else {
 			$total = $free; //either unknown or unlimited
 		}
 		if ($total > 0) {
+			if ($quota > 0 && $total > $quota) {
+				$total = $quota;
+			}
 			// prevent division by zero or error codes (negative values)
 			$relative = round(($used / $total) * 10000) / 100;
 		} else {
@@ -928,5 +1017,36 @@ class OC_Helper {
 		}
 
 		return array('free' => $free, 'used' => $used, 'total' => $total, 'relative' => $relative);
+	}
+
+	/**
+	 * Get storage info including all mount points and quota
+	 *
+	 * @return array
+	 */
+	private static function getGlobalStorageInfo() {
+		$quota = OC_Util::getUserQuota(\OCP\User::getUser());
+
+		$rootInfo = \OC\Files\Filesystem::getFileInfo('', 'ext');
+		$used = $rootInfo['size'];
+		if ($used < 0) {
+			$used = 0;
+		}
+
+		$total = $quota;
+		$free = $quota - $used;
+
+		if ($total > 0) {
+			if ($quota > 0 && $total > $quota) {
+				$total = $quota;
+			}
+			// prevent division by zero or error codes (negative values)
+			$relative = round(($used / $total) * 10000) / 100;
+		} else {
+			$relative = 0;
+		}
+
+		return array('free' => $free, 'used' => $used, 'total' => $total, 'relative' => $relative);
+
 	}
 }

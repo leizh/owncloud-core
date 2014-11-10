@@ -40,12 +40,14 @@ class OC_Archive_TAR extends OC_Archive{
 		if(strpos($file, '.')) {
 			$extension=substr($file, strrpos($file, '.'));
 			switch($extension) {
-				case 'gz':
-				case 'tgz':
+				case '.gz':
+				case '.tgz':
 					return self::GZIP;
-				case 'bz':
-				case 'bz2':
+				case '.bz':
+				case '.bz2':
 					return self::BZIP;
+				case '.tar':
+					return self::PLAIN;
 				default:
 					return self::PLAIN;
 			}
@@ -154,7 +156,7 @@ class OC_Archive_TAR extends OC_Archive{
 	}
 	/**
 	 * get the last modified time of a file in the archive
-	 * @param string path
+	 * @param string $path
 	 * @return int
 	 */
 	function mtime($path) {

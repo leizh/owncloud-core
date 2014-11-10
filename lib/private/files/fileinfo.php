@@ -53,7 +53,13 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	}
 
 	public function offsetGet($offset) {
-		return $this->data[$offset];
+		if ($offset === 'type') {
+			return $this->getType();
+		} elseif (isset($this->data[$offset])) {
+			return $this->data[$offset];
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -102,7 +108,7 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 * @return string
 	 */
 	public function getName() {
-		return $this->data['name'];
+		return basename($this->getPath());
 	}
 
 	/**
@@ -141,13 +147,17 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	}
 
 	/**
-	 * @return \OCP\Files\FileInfo::TYPE_FILE | \OCP\Files\FileInfo::TYPE_FOLDER
+	 * @return \OCP\Files\FileInfo::TYPE_FILE|\OCP\Files\FileInfo::TYPE_FOLDER
 	 */
 	public function getType() {
-		return $this->data['type'];
+		if (isset($this->data['type'])) {
+			return $this->data['type'];
+		} else {
+			return $this->getMimetype() === 'httpd/unix-directory' ? self::TYPE_FOLDER : self::TYPE_FILE;
+		}
 	}
 
-	public function getData(){
+	public function getData() {
 		return $this->data;
 	}
 
@@ -174,6 +184,15 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	}
 
 	/**
+	 * Check whether new files or folders can be created inside this folder
+	 *
+	 * @return bool
+	 */
+	public function isCreatable() {
+		return $this->checkPermissions(\OCP\PERMISSION_CREATE);
+	}
+
+	/**
 	 * @return bool
 	 */
 	public function isDeletable() {
@@ -185,5 +204,29 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 	 */
 	public function isShareable() {
 		return $this->checkPermissions(\OCP\PERMISSION_SHARE);
+	}
+
+	/**
+	 * Check if a file or folder is shared
+	 * @return bool
+	 */
+	public function isShared() {
+		$sid = $this->getStorage()->getId();
+		if (!is_null($sid)) {
+			$sid = explode(':', $sid);
+			return ($sid[0] === 'shared');
+		}
+
+		return false;
+	}
+
+	public function isMounted() {
+		$sid = $this->getStorage()->getId();
+		if (!is_null($sid)) {
+			$sid = explode(':', $sid);
+			return ($sid[0] !== 'local' and $sid[0] !== 'home' and $sid[0] !== 'shared');
+		}
+
+		return false;
 	}
 }

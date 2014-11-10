@@ -21,7 +21,6 @@
 
 OC_JSON::checkLoggedIn();
 OCP\JSON::callCheck();
-OC_App::loadApps();
 
 $defaults = new \OCP\Defaults();
 
@@ -32,6 +31,7 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 				try {
 					$shareType = (int)$_POST['shareType'];
 					$shareWith = $_POST['shareWith'];
+					$itemSourceName = isset($_POST['itemSourceName']) ? $_POST['itemSourceName'] : null;
 					if ($shareType === OCP\Share::SHARE_TYPE_LINK && $shareWith == '') {
 						$shareWith = null;
 					}
@@ -42,7 +42,8 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 						$shareType,
 						$shareWith,
 						$_POST['permissions'],
-						$_POST['itemSourceName']
+						$itemSourceName,
+						(!empty($_POST['expirationDate']) ? new \DateTime($_POST['expirationDate']) : null)
 					);
 
 					if (is_string($token)) {
@@ -80,8 +81,12 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 			break;
 		case 'setExpirationDate':
 			if (isset($_POST['date'])) {
-				$return = OCP\Share::setExpirationDate($_POST['itemType'], $_POST['itemSource'], $_POST['date']);
-				($return) ? OC_JSON::success() : OC_JSON::error();
+				try {
+					$return = OCP\Share::setExpirationDate($_POST['itemType'], $_POST['itemSource'], $_POST['date']);
+					($return) ? OC_JSON::success() : OC_JSON::error();
+				} catch (\Exception $e) {
+					OC_JSON::error(array('data' => array('message' => $e->getMessage())));
+				}
 			}
 			break;
 		case 'informRecipients':
@@ -102,7 +107,7 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 			$mailNotification = new OC\Share\MailNotifications();
 			$result = $mailNotification->sendInternalShareMail($recipientList, $itemSource, $itemType);
 
-			\OCP\Share::setSendMailStatus($itemType, $itemSource, $shareType, true);
+			\OCP\Share::setSendMailStatus($itemType, $itemSource, $shareType, $recipient, true);
 
 			if (empty($result)) {
 				OCP\JSON::success();
@@ -121,7 +126,7 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 			$shareType = $_POST['shareType'];
 			$itemType = $_POST['itemType'];
 			$recipient = $_POST['recipient'];
-			\OCP\Share::setSendMailStatus($itemType, $itemSource, $shareType, false);
+			\OCP\Share::setSendMailStatus($itemType, $itemSource, $shareType, $recipient, false);
 			OCP\JSON::success();
 			break;
 
@@ -145,10 +150,17 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 			}
 
 			$result = $mailNotification->sendLinkShareMail($to_address, $file, $link, $expiration);
-			if($result === true) {
+			if(empty($result)) {
 				\OCP\JSON::success();
 			} else {
-				\OCP\JSON::error(array('data' => array('message' => OC_Util::sanitizeHTML($result))));
+				$l = OC_L10N::get('core');
+				OCP\JSON::error(array(
+					'data' => array(
+						'message' => $l->t("Couldn't send mail to following users: %s ",
+								implode(', ', $result)
+							)
+					)
+				));
 			}
 
 			break;
@@ -191,9 +203,37 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 				OC_JSON::success(array('data' => array('reshare' => $reshare, 'shares' => $shares)));
 			}
 			break;
+		case 'getShareWithEmail':
+			$result = array();
+			if (isset($_GET['search'])) {
+				$cm = OC::$server->getContactsManager();
+				if (!is_null($cm) && $cm->isEnabled()) {
+					$contacts = $cm->search($_GET['search'], array('FN', 'EMAIL'));
+					foreach ($contacts as $contact) {
+						if (!isset($contact['EMAIL'])) {
+							continue;
+						}
+
+						$emails = $contact['EMAIL'];
+						if (!is_array($emails)) {
+							$emails = array($emails);
+						}
+
+						foreach($emails as $email) {
+							$result[] = array(
+								'id' => $contact['id'],
+								'email' => $email,
+								'displayname' => $contact['FN'],
+							);
+						}
+					}
+				}
+			}
+			OC_JSON::success(array('data' => $result));
+			break;
 		case 'getShareWith':
 			if (isset($_GET['search'])) {
-				$sharePolicy = OC_Appconfig::getValue('core', 'shareapi_share_policy', 'global');
+				$shareWithinGroupOnly = OC\Share\Share::shareWithGroupMembersOnly();
 				$shareWith = array();
 // 				if (OC_App::isEnabled('contacts')) {
 // 					// TODO Add function to contacts to only get the 'fullname' column to improve performance
@@ -213,7 +253,7 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 // 					}
 // 				}
 				$groups = OC_Group::getGroups($_GET['search']);
-				if ($sharePolicy == 'groups_only') {
+				if ($shareWithinGroupOnly) {
 					$usergroups = OC_Group::getUserGroups(OC_User::getUser());
 					$groups = array_intersect($groups, $usergroups);
 				}
@@ -223,7 +263,7 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 				$offset = 0;
 				while ($count < 15 && count($users) == $limit) {
 					$limit = 15 - $count;
-					if ($sharePolicy == 'groups_only') {
+					if ($shareWithinGroupOnly) {
 						$users = OC_Group::DisplayNamesInGroups($usergroups, $_GET['search'], $limit, $offset);
 					} else {
 						$users = OC_User::getDisplayNames($_GET['search'], $limit, $offset);

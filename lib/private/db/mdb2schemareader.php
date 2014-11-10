@@ -66,7 +66,7 @@ class MDB2SchemaReader {
 	}
 
 	/**
-	 * @param\Doctrine\DBAL\Schema\Schema $schema
+	 * @param \Doctrine\DBAL\Schema\Schema $schema
 	 * @param \SimpleXMLElement $xml
 	 * @throws \DomainException
 	 */
@@ -82,6 +82,7 @@ class MDB2SchemaReader {
 					$name = str_replace('*dbprefix*', $this->DBTABLEPREFIX, $name);
 					$name = $this->platform->quoteIdentifier($name);
 					$table = $schema->createTable($name);
+					$table->addOption('collate', 'utf8_bin');
 					break;
 				case 'create':
 				case 'overwrite':
@@ -130,7 +131,7 @@ class MDB2SchemaReader {
 	 * @throws \DomainException
 	 */
 	private function loadField($table, $xml) {
-		$options = array();
+		$options = array( 'notnull' => false );
 		foreach ($xml->children() as $child) {
 			/**
 			 * @var \SimpleXMLElement $child
@@ -303,7 +304,7 @@ class MDB2SchemaReader {
 	}
 
 	/**
-	 * @param \SimpleXMLElement | string $xml
+	 * @param \SimpleXMLElement|string $xml
 	 * @return bool
 	 */
 	private function asBool($xml) {

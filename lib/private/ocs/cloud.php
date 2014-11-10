@@ -57,8 +57,8 @@ class OC_OCS_Cloud {
 	 *   </quota>
 	 * </data>
 	 *
-	 * @param $parameters object should contain parameter 'userid' which identifies
-	 *                           the user from whom the information will be returned
+	 * @param array $parameters should contain parameter 'userid' which identifies
+	 *                          the user from whom the information will be returned
 	 */
 	public static function getUser($parameters) {
 		$return  = array();
@@ -98,32 +98,5 @@ class OC_OCS_Cloud {
 			'email' => $email,
 		);
 		return new OC_OCS_Result($data);
-	}
-
-	public static function getUserPublickey($parameters) {
-
-		if(OC_User::userExists($parameters['user'])) {
-			// calculate the disc space
-			// TODO
-			return new OC_OCS_Result(array());
-		} else {
-			return new OC_OCS_Result(null, 300);
-		}
-	}
-
-	public static function getUserPrivatekey($parameters) {
-		$user = OC_User::getUser();
-		if(OC_User::isAdminUser($user) or ($user==$parameters['user'])) {
-
-			if(OC_User::userExists($user)) {
-				// calculate the disc space
-				$txt = 'this is the private key of '.$parameters['user'];
-				echo($txt);
-			} else {
-				return new OC_OCS_Result(null, 300, 'User does not exist');
-			}
-		} else {
-			return new OC_OCS_Result('null', 300, 'You don´t have permission to access this ressource.');
-		}
 	}
 }

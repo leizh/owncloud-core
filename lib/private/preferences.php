@@ -68,8 +68,8 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Get all users using the preferences
-	 * @return array with user ids
+	 * Get all users using the preferences
+	 * @return array an array of user ids
 	 *
 	 * This function returns a list of all users that have at least one entry
 	 * in the preferences table.
@@ -109,7 +109,7 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Get all apps of an user
+	 * Get all apps of an user
 	 * @param string $user user
 	 * @return integer[] with app ids
 	 *
@@ -122,10 +122,10 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Get the available keys for an app
+	 * Get the available keys for an app
 	 * @param string $user user
 	 * @param string $app the app we are looking for
-	 * @return array with key names
+	 * @return array an array of key names
 	 *
 	 * This function gets all keys of an app of an user. Please note that the
 	 * values are not returned.
@@ -140,7 +140,7 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Gets the preference
+	 * Gets the preference
 	 * @param string $user user
 	 * @param string $app app
 	 * @param string $key key
@@ -160,53 +160,137 @@ class Preferences {
 	}
 
 	/**
-	 * @brief sets a value in the preferences
+	 * sets a value in the preferences
 	 * @param string $user user
 	 * @param string $app app
 	 * @param string $key key
 	 * @param string $value value
+	 * @param string $preCondition only set value if the key had a specific value before
+	 * @return bool true if value was set, otherwise false
 	 *
 	 * Adds a value to the preferences. If the key did not exist before, it
 	 * will be added automagically.
 	 */
-	public function setValue($user, $app, $key, $value) {
+	public function setValue($user, $app, $key, $value, $preCondition = null) {
 		// Check if the key does exist
-		$query = 'SELECT COUNT(*) FROM `*PREFIX*preferences`'
+		$query = 'SELECT `configvalue` FROM `*PREFIX*preferences`'
 			. ' WHERE `userid` = ? AND `appid` = ? AND `configkey` = ?';
-		$count = $this->conn->fetchColumn($query, array($user, $app, $key));
-		$exists = $count > 0;
+		$oldValue = $this->conn->fetchColumn($query, array($user, $app, $key));
+		$exists = $oldValue !== false;
 
-		if (!$exists) {
+		if($oldValue === strval($value)) {
+			// no changes
+			return true;
+		}
+		
+		$affectedRows = 0;
+
+		if (!$exists && $preCondition === null) {
 			$data = array(
 				'userid' => $user,
 				'appid' => $app,
 				'configkey' => $key,
 				'configvalue' => $value,
 			);
-			$this->conn->insert('*PREFIX*preferences', $data);
-		} else {
-			$data = array(
-				'configvalue' => $value,
-			);
-			$where = array(
-				'userid' => $user,
-				'appid' => $app,
-				'configkey' => $key,
-			);
-			$this->conn->update('*PREFIX*preferences', $data, $where);
+			$affectedRows = $this->conn->insert('*PREFIX*preferences', $data);
+		} elseif ($exists) {
+			$data = array($value, $user, $app, $key);
+			$sql  = "UPDATE `*PREFIX*preferences` SET `configvalue` = ?"
+					. " WHERE `userid` = ? AND `appid` = ? AND `configkey` = ?";
+
+			if ($preCondition !== null) {
+				if (\OC_Config::getValue( 'dbtype', 'sqlite' ) === 'oci') {
+					//oracle hack: need to explicitly cast CLOB to CHAR for comparison
+					$sql .= " AND to_char(`configvalue`) = ?";
+				} else {
+					$sql .= " AND `configvalue` = ?";
+				}
+				$data[] = $preCondition;
+			}
+			$affectedRows = $this->conn->executeUpdate($sql, $data);
 		}
 
 		// only add to the cache if we already loaded data for the user
-		if (isset($this->cache[$user])) {
+		if ($affectedRows > 0 && isset($this->cache[$user])) {
 			if (!isset($this->cache[$user][$app])) {
 				$this->cache[$user][$app] = array();
 			}
 			$this->cache[$user][$app][$key] = $value;
 		}
+
+		return ($affectedRows > 0) ? true : false;
+
 	}
 
 	/**
-	 * @brief Deletes a key
+	 * Gets the preference for an array of users
+	 * @param string $app
+	 * @param string $key
+	 * @param array $users
+	 * @return array Mapped values: userid => value
+	 */
+	public function getValueForUsers($app, $key, $users) {
+		if (empty($users) || !is_array($users)) {
+			return array();
+		}
+
+		$chunked_users = array_chunk($users, 50, true);
+		$placeholders_50 = implode(',', array_fill(0, 50, '?'));
+
+		$userValues = array();
+		foreach ($chunked_users as $chunk) {
+			$queryParams = $chunk;
+			array_unshift($queryParams, $key);
+			array_unshift($queryParams, $app);
+
+			$placeholders = (sizeof($chunk) == 50) ? $placeholders_50 : implode(',', array_fill(0, sizeof($chunk), '?'));
+
+			$query = 'SELECT `userid`, `configvalue` '
+				. ' FROM `*PREFIX*preferences` '
+				. ' WHERE `appid` = ? AND `configkey` = ?'
+				. ' AND `userid` IN (' . $placeholders . ')';
+			$result = $this->conn->executeQuery($query, $queryParams);
+
+			while ($row = $result->fetch()) {
+				$userValues[$row['userid']] = $row['configvalue'];
+			}
+		}
+
+		return $userValues;
+	}
+
+	/**
+	 * Gets the users for a preference
+	 * @param string $app
+	 * @param string $key
+	 * @param string $value
+	 * @return array
+	 */
+	public function getUsersForValue($app, $key, $value) {
+		$users = array();
+
+		$query = 'SELECT `userid` '
+			. ' FROM `*PREFIX*preferences` '
+			. ' WHERE `appid` = ? AND `configkey` = ? AND ';
+
+		if (\OC_Config::getValue( 'dbtype', 'sqlite' ) === 'oci') {
+			//FIXME oracle hack: need to explicitly cast CLOB to CHAR for comparison
+			$query .= ' to_char(`configvalue`)= ?';
+		} else {
+			$query .= ' `configvalue` = ?';
+		}
+
+		$result = $this->conn->executeQuery($query, array($app, $key, $value));
+
+		while ($row = $result->fetch()) {
+			$users[] = $row['userid'];
+		}
+
+		return $users;
+	}
+
+	/**
+	 * Deletes a key
 	 * @param string $user user
 	 * @param string $app app
 	 * @param string $key key
@@ -227,7 +311,7 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Remove app of user from preferences
+	 * Remove app of user from preferences
 	 * @param string $user user
 	 * @param string $app app
 	 *
@@ -246,7 +330,7 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Remove user from preferences
+	 * Remove user from preferences
 	 * @param string $user user
 	 *
 	 * Removes all keys in preferences belonging to the user.
@@ -261,7 +345,7 @@ class Preferences {
 	}
 
 	/**
-	 * @brief Remove app from all users
+	 * Remove app from all users
 	 * @param string $app app
 	 *
 	 * Removes all keys in preferences belonging to the app.

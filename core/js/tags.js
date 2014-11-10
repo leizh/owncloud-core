@@ -1,7 +1,13 @@
 OC.Tags= {
 	edit:function(type, cb) {
 		if(!type && !this.type) {
-			throw { name: 'MissingParameter', message: t('core', 'The object type is not specified.') };
+			throw {
+				name: 'MissingParameter',
+				message: t(
+					'core',
+					'The object type is not specified.'
+				)
+			};
 		}
 		type = type ? type : this.type;
 		var self = this;
@@ -25,11 +31,23 @@ OC.Tags= {
 				});
 				self.deleteButton = {
 					text: t('core', 'Delete'),
-					click: function() {self._deleteTags(self, type, self._selectedIds())}
+					click: function() {
+						self._deleteTags(
+							self,
+							type,
+							self._selectedIds()
+						);
+					}
 				};
 				self.addButton = {
 					text: t('core', 'Add'),
-					click: function() {self._addTag(self, type, self.$taginput.val())}
+					click: function() {
+						self._addTag(
+							self,
+							type,
+							self.$taginput.val()
+						);
+					}
 				};
 
 				self._fillTagList(type, self.$taglist);
@@ -59,7 +77,8 @@ OC.Tags= {
 		});
 	},
 	/**
-	 * @param string type
+	 * @param {string} type
+	 * @param {string} tag
 	 * @return jQuery.Promise which resolves with an array of ids
 	 */
 	getIdsForTag:function(type, tag) {
@@ -80,8 +99,8 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param string type
-	 * @return jQuery.Promise which resolves with an array of ids
+	 * @param {string} type
+	 * @return {*} jQuery.Promise which resolves with an array of ids
 	 */
 	getFavorites:function(type) {
 		if(!type && !this.type) {
@@ -101,8 +120,8 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param string type
-	 * @return jQuery.Promise which resolves with an array of id/name objects
+	 * @param {string} type
+	 * @return {*} jQuery.Promise which resolves with an array of id/name objects
 	 */
 	getTags:function(type) {
 		if(!type && !this.type) {
@@ -122,9 +141,10 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param int id
-	 * @param string type
-	 * @return jQuery.Promise
+	 * @param {number} id
+	 * @param {string} tag
+	 * @param {string} type
+	 * @return {*} jQuery.Promise
 	 */
 	tagAs:function(id, tag, type) {
 		if(!type && !this.type) {
@@ -146,9 +166,10 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param int id
-	 * @param string type
-	 * @return jQuery.Promise
+	 * @param {number} id
+	 * @param {string} tag
+	 * @param {string} type
+	 * @return {*} jQuery.Promise
 	 */
 	unTag:function(id, tag, type) {
 		if(!type && !this.type) {
@@ -170,9 +191,9 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param int id
-	 * @param string type
-	 * @return jQuery.Promise
+	 * @param {number} id
+	 * @param {string} type
+	 * @return {*} jQuery.Promise
 	 */
 	addToFavorites:function(id, type) {
 		if(!type && !this.type) {
@@ -181,7 +202,10 @@ OC.Tags= {
 		type = type ? type : this.type;
 		var defer = $.Deferred(),
 			self = this,
-			url = OC.generateUrl('/tags/{type}/favorite/{id}/', {type: type, id: id});
+			url = OC.generateUrl(
+				'/tags/{type}/favorite/{id}/',
+				{type: type, id: id}
+			);
 		$.post(url, function(response) {
 			if(response.status === 'success') {
 				defer.resolve(response);
@@ -194,9 +218,9 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param int id
-	 * @param string type
-	 * @return jQuery.Promise
+	 * @param {number} id
+	 * @param {string} type
+	 * @return {*} jQuery.Promise
 	 */
 	removeFromFavorites:function(id, type) {
 		if(!type && !this.type) {
@@ -205,7 +229,10 @@ OC.Tags= {
 		type = type ? type : this.type;
 		var defer = $.Deferred(),
 			self = this,
-			url = OC.generateUrl('/tags/{type}/unfavorite/{id}/', {type: type, id: id});
+			url = OC.generateUrl(
+				'/tags/{type}/unfavorite/{id}/',
+				{type: type, id: id}
+			);
 		$.post(url, function(response) {
 			if(response.status === 'success') {
 				defer.resolve();
@@ -218,9 +245,9 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param string tag
-	 * @param string type
-	 * @return jQuery.Promise which resolves with an object with the name and the new id
+	 * @param {string} tag
+	 * @param {string} type
+	 * @return {*} jQuery.Promise which resolves with an object with the name and the new id
 	 */
 	addTag:function(tag, type) {
 		if(!type && !this.type) {
@@ -245,9 +272,9 @@ OC.Tags= {
 		return defer.promise();
 	},
 	/**
-	 * @param array tags
-	 * @param string type
-	 * @return jQuery.Promise
+	 * @param {array} tags
+	 * @param {string} type
+	 * @return {*} jQuery.Promise
 	 */
 	deleteTags:function(tags, type) {
 		if(!type && !this.type) {

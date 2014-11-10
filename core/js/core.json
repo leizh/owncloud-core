@@ -4,15 +4,16 @@
 		"jquery-migrate-1.2.1.min.js",
 		"jquery-ui-1.10.0.custom.js",
 		"jquery-showpassword.js",
-		"jquery.infieldlabel.js",
 		"jquery.placeholder.js",
-		"jquery-tipsy.js"
+		"jquery-tipsy.js",
+		"underscore.js"
 	],
 	"modules": [
 		"compatibility.js",
 		"jquery.ocdialog.js",
 		"oc-dialogs.js",
 		"js.js",
+		"share.js",
 		"octemplate.js",
 		"eventsource.js",
 		"config.js",

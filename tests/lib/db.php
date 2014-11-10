@@ -27,6 +27,11 @@ class Test_DB extends PHPUnit_Framework_TestCase {
 	 */
 	private $table3;
 
+	/**
+	 * @var string
+	 */
+	private $table4;
+
 	public function setUp() {
 		$dbfile = OC::$SERVERROOT.'/tests/data/db_structure.xml';
 
@@ -200,4 +205,95 @@ class Test_DB extends PHPUnit_Framework_TestCase {
 		}
 	}
 
+	public function testUpdateAffectedRowsNoMatch() {
+		$this->insertCardData('fullname1', 'uri1');
+		// The WHERE clause does not match any rows
+		$this->assertSame(0, $this->updateCardData('fullname3', 'uri2'));
+	}
+
+	public function testUpdateAffectedRowsDifferent() {
+		$this->insertCardData('fullname1', 'uri1');
+		// The WHERE clause matches a single row and the value we are updating
+		// is different from the one already present.
+		$this->assertSame(1, $this->updateCardData('fullname1', 'uri2'));
+	}
+
+	public function testUpdateAffectedRowsSame() {
+		$this->insertCardData('fullname1', 'uri1');
+		// The WHERE clause matches a single row and the value we are updating
+		// to is the same as the one already present. MySQL reports 0 here when
+		// the PDO::MYSQL_ATTR_FOUND_ROWS flag is not specified.
+		$this->assertSame(1, $this->updateCardData('fullname1', 'uri1'));
+	}
+
+	public function testUpdateAffectedRowsMultiple() {
+		$this->insertCardData('fullname1', 'uri1');
+		$this->insertCardData('fullname2', 'uri2');
+		// The WHERE clause matches two rows. One row contains a value that
+		// needs to be updated, the other one already contains the value we are
+		// updating to. MySQL reports 1 here when the PDO::MYSQL_ATTR_FOUND_ROWS
+		// flag is not specified.
+		$query = OC_DB::prepare("UPDATE `*PREFIX*{$this->table2}` SET `uri` = ?");
+		$this->assertSame(2, $query->execute(array('uri1')));
+	}
+
+	protected function insertCardData($fullname, $uri) {
+		$query = OC_DB::prepare("INSERT INTO `*PREFIX*{$this->table2}` (`fullname`, `uri`, `carddata`) VALUES (?, ?, ?)");
+		$this->assertSame(1, $query->execute(array($fullname, $uri, uniqid())));
+	}
+
+	protected function updateCardData($fullname, $uri) {
+		$query = OC_DB::prepare("UPDATE `*PREFIX*{$this->table2}` SET `uri` = ? WHERE `fullname` = ?");
+		return $query->execute(array($uri, $fullname));
+	}
+
+	public function testILIKE() {
+		$table = "*PREFIX*{$this->table2}";
+
+		$query = OC_DB::prepare("INSERT INTO `$table` (`fullname`, `uri`, `carddata`) VALUES (?, ?, ?)");
+		$query->execute(array('fooBAR', 'foo', 'bar'));
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` LIKE ?");
+		$result = $query->execute(array('foobar'));
+		$this->assertCount(0, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` ILIKE ?");
+		$result = $query->execute(array('foobar'));
+		$this->assertCount(1, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` ILIKE ?");
+		$result = $query->execute(array('foo'));
+		$this->assertCount(0, $result->fetchAll());
+	}
+
+	public function testILIKEWildcard() {
+		$table = "*PREFIX*{$this->table2}";
+
+		$query = OC_DB::prepare("INSERT INTO `$table` (`fullname`, `uri`, `carddata`) VALUES (?, ?, ?)");
+		$query->execute(array('FooBAR', 'foo', 'bar'));
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` LIKE ?");
+		$result = $query->execute(array('%bar'));
+		$this->assertCount(0, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` LIKE ?");
+		$result = $query->execute(array('foo%'));
+		$this->assertCount(0, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` LIKE ?");
+		$result = $query->execute(array('%ba%'));
+		$this->assertCount(0, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` ILIKE ?");
+		$result = $query->execute(array('%bar'));
+		$this->assertCount(1, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` ILIKE ?");
+		$result = $query->execute(array('foo%'));
+		$this->assertCount(1, $result->fetchAll());
+
+		$query = OC_DB::prepare("SELECT * FROM `$table` WHERE `fullname` ILIKE ?");
+		$result = $query->execute(array('%ba%'));
+		$this->assertCount(1, $result->fetchAll());
+	}
 }

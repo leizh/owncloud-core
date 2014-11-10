@@ -9,7 +9,7 @@ namespace OCP\Files;
 
 interface FileInfo {
 	const TYPE_FILE = 'file';
-	const TYPE_FOLDER = 'folder';
+	const TYPE_FOLDER = 'dir';
 
 	/**
 	 * Get the Etag of the file or folder
@@ -104,7 +104,7 @@ interface FileInfo {
 	/**
 	 * Check whether this is a file or a folder
 	 *
-	 * @return \OCP\Files\FileInfo::TYPE_FILE | \OCP\Files\FileInfo::TYPE_FOLDER
+	 * @return \OCP\Files\FileInfo::TYPE_FILE|\OCP\Files\FileInfo::TYPE_FOLDER
 	 */
 	public function getType();
 
@@ -123,6 +123,13 @@ interface FileInfo {
 	public function isUpdateable();
 
 	/**
+	 * Check whether new files or folders can be created inside this folder
+	 *
+	 * @return bool
+	 */
+	public function isCreatable();
+
+	/**
 	 * Check if a file or folder can be deleted
 	 *
 	 * @return bool
@@ -135,4 +142,18 @@ interface FileInfo {
 	 * @return bool
 	 */
 	public function isShareable();
+
+	/**
+	 * Check if a file or folder is shared
+	 *
+	 * @return bool
+	 */
+	public function isShared();
+
+	/**
+	 * Check if a file or folder is mounted
+	 *
+	 * @return bool
+	 */
+	public function isMounted();
 }

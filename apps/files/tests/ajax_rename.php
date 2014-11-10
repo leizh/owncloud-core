@@ -24,6 +24,16 @@
 class Test_OC_Files_App_Rename extends \PHPUnit_Framework_TestCase {
 	private static $user;
 
+	/**
+	 * @var PHPUnit_Framework_MockObject_MockObject
+	 */
+	private $viewMock;
+
+	/**
+	 * @var \OCA\Files\App
+	 */
+	private $files;
+
 	function setUp() {
 		// mock OC_L10n
 		if (!self::$user) {
@@ -56,121 +66,51 @@ class Test_OC_Files_App_Rename extends \PHPUnit_Framework_TestCase {
 	}
 
 	/**
-	 * @brief test rename of file/folder named "Shared"
-	 */
-	function testRenameSharedFolder() {
-		$dir = '/';
-		$oldname = 'Shared';
-		$newname = 'new_name';
-
-		$this->viewMock->expects($this->at(0))
-			->method('file_exists')
-			->with('/')
-			->will($this->returnValue(true));
-
-		$result = $this->files->rename($dir, $oldname, $newname);
-		$expected = array(
-			'success'	=> false,
-			'data'		=> array('message' => '%s could not be renamed')
-		);
-
-		$this->assertEquals($expected, $result);
-	}
-
-	/**
-	 * @brief test rename of file/folder named "Shared"
-	 */
-	function testRenameSharedFolderInSubdirectory() {
-		$dir = '/test';
-		$oldname = 'Shared';
-		$newname = 'new_name';
-
-		$this->viewMock->expects($this->at(0))
-			->method('file_exists')
-			->with('/test')
-			->will($this->returnValue(true));
-
-		$this->viewMock->expects($this->any())
-			->method('getFileInfo')
-			->will($this->returnValue(array(
-				'fileid' => 123,
-				'type' => 'dir',
-				'mimetype' => 'httpd/unix-directory',
-				'size' => 18,
-				'etag' => 'abcdef',
-				'directory' => '/',
-				'name' => 'new_name',
-			)));
-
-		$result = $this->files->rename($dir, $oldname, $newname);
-
-		$this->assertTrue($result['success']);
-		$this->assertEquals(123, $result['data']['id']);
-		$this->assertEquals('new_name', $result['data']['name']);
-		$this->assertEquals('/test', $result['data']['directory']);
-		$this->assertEquals(18, $result['data']['size']);
-		$this->assertEquals('httpd/unix-directory', $result['data']['mime']);
-		$icon = \OC_Helper::mimetypeIcon('dir');
-		$icon = substr($icon, 0, -3) . 'svg';
-		$this->assertEquals($icon, $result['data']['icon']);
-		$this->assertFalse($result['data']['isPreviewAvailable']);
-	}
-
-	/**
-	 * @brief test rename of file/folder to "Shared"
-	 */
-	function testRenameFolderToShared() {
-		$dir = '/';
-		$oldname = 'oldname';
-		$newname = 'Shared';
-
-		$result = $this->files->rename($dir, $oldname, $newname);
-		$expected = array(
-			'success'	=> false,
-			'data'		=> array('message' => "Invalid folder name. Usage of 'Shared' is reserved.")
-		);
-
-		$this->assertEquals($expected, $result);
-	}
-
-	/**
-	 * @brief test rename of file/folder
+	 * test rename of file/folder
 	 */
 	function testRenameFolder() {
 		$dir = '/';
 		$oldname = 'oldname';
 		$newname = 'newname';
 
-		$this->viewMock->expects($this->at(0))
+		$this->viewMock->expects($this->any())
 			->method('file_exists')
-			->with('/')
-			->will($this->returnValue(true));
+			->with($this->anything())
+			->will($this->returnValueMap(array(
+				array('/', true),
+				array('/oldname', true)
+				)));
+
 
 		$this->viewMock->expects($this->any())
 			->method('getFileInfo')
-			->will($this->returnValue(array(
+			->will($this->returnValue(new \OC\Files\FileInfo(
+				'/new_name',
+				new \OC\Files\Storage\Local(array('datadir' => '/')),
+				'/',
+				array(
 				'fileid' => 123,
 				'type' => 'dir',
 				'mimetype' => 'httpd/unix-directory',
+				'mtime' => 0,
+				'permissions' => 31,
 				'size' => 18,
 				'etag' => 'abcdef',
 				'directory' => '/',
 				'name' => 'new_name',
-			)));
+			))));
 
 		$result = $this->files->rename($dir, $oldname, $newname);
 
 		$this->assertTrue($result['success']);
 		$this->assertEquals(123, $result['data']['id']);
-		$this->assertEquals('newname', $result['data']['name']);
-		$this->assertEquals('/', $result['data']['directory']);
+		$this->assertEquals('new_name', $result['data']['name']);
 		$this->assertEquals(18, $result['data']['size']);
-		$this->assertEquals('httpd/unix-directory', $result['data']['mime']);
+		$this->assertEquals('httpd/unix-directory', $result['data']['mimetype']);
 		$this->assertEquals('abcdef', $result['data']['etag']);
 		$icon = \OC_Helper::mimetypeIcon('dir');
 		$icon = substr($icon, 0, -3) . 'svg';
 		$this->assertEquals($icon, $result['data']['icon']);
-		$this->assertFalse($result['data']['isPreviewAvailable']);
 	}
 
 	/**
@@ -183,8 +123,42 @@ class Test_OC_Files_App_Rename extends \PHPUnit_Framework_TestCase {
 
 		$this->viewMock->expects($this->at(0))
 			->method('file_exists')
-			->with('/unexist')
+			->with('/unexist/oldname')
 			->will($this->returnValue(false));
+
+		$this->viewMock->expects($this->any())
+			->method('getFileInfo')
+			->will($this->returnValue(array(
+				'fileid' => 123,
+				'type' => 'dir',
+				'mimetype' => 'httpd/unix-directory',
+				'size' => 18,
+				'etag' => 'abcdef',
+				'directory' => '/unexist',
+				'name' => 'new_name',
+			)));
+
+		$result = $this->files->rename($dir, $oldname, $newname);
+
+		$this->assertFalse($result['success']);
+		$this->assertEquals('sourcenotfound', $result['data']['code']);
+	}
+
+	/**
+	 * Test move to a folder that doesn't exist any more
+	 */
+	function testRenameToNonExistingFolder() {
+		$dir = '/';
+		$oldname = 'oldname';
+		$newname = '/unexist/newname';
+
+		$this->viewMock->expects($this->any())
+			->method('file_exists')
+			->with($this->anything())
+			->will($this->returnValueMap(array(
+				array('/oldname', true),
+				array('/unexist', false)
+				)));
 
 		$this->viewMock->expects($this->any())
 			->method('getFileInfo')

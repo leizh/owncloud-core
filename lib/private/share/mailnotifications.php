@@ -21,20 +21,38 @@
 
 namespace OC\Share;
 
+use DateTime;
+
 class MailNotifications {
 
-	private $senderId;    // sender userId
-	private $from;        // sender email address
+	/**
+	 * sender userId
+	 * @var null|string
+	 */
+	private $senderId;
+
+	/**
+	 * sender email address
+	 * @var string
+	 */
+	private $from;
+
+	/**
+	 * @var string
+	 */
 	private $senderDisplayName;
+
+	/**
+	 * @var \OC_L10N
+	 */
 	private $l;
 
 	/**
 	 *
-	 * @param string $recipient user id
 	 * @param string $sender user id (if nothing is set we use the currently logged-in user)
 	 */
 	public function __construct($sender = null) {
-		$this->l = \OC_L10N::get('core');
+		$this->l = \OC::$server->getL10N('lib');
 
 		$this->senderId = $sender;
 
@@ -48,11 +66,11 @@ class MailNotifications {
 	}
 
 	/**
-	 * @brief inform users if a file was shared with them
+	 * inform users if a file was shared with them
 	 *
 	 * @param array $recipientList list of recipients
-	 * @param type $itemSource shared item source
-	 * @param type $itemType shared item type
+	 * @param string $itemSource shared item source
+	 * @param string $itemType shared item type
 	 * @return array list of user to whom the mail send operation failed
 	 */
 	public function sendInternalShareMail($recipientList, $itemSource, $itemType) {
@@ -81,15 +99,20 @@ class MailNotifications {
 				}
 			}
 
+			// Link to folder, or root folder if a file
+
 			if ($itemType === 'folder') {
-				$foldername = "/Shared/" . $filename;
+				$args = array(
+					'dir' => $filename,
+				);
 			} else {
-				// if it is a file we can just link to the Shared folder,
-				// that's the place where the user will find the file
-				$foldername = "/Shared";
+				$args = array(
+					'dir' => '/',
+					'scrollto' => $filename,
+				);
 			}
 
-			$link = \OCP\Util::linkToAbsolute('files', 'index.php', array("dir" => $foldername));
+			$link = \OCP\Util::linkToAbsolute('files', 'index.php', $args);
 
 			list($htmlMail, $alttextMail) = $this->createMailBody($filename, $link, $expiration);
 
@@ -97,7 +120,7 @@ class MailNotifications {
 			try {
 				\OCP\Util::sendMail($to, $recipientDisplayName, $subject, $htmlMail, $this->from, $this->senderDisplayName, 1, $alttextMail);
 			} catch (\Exception $e) {
-				\OCP\Util::writeLog('sharing', "Can't send mail to inform the user abaut an internal share: " . $e->getMessage() , \OCP\Util::ERROR);
+				\OCP\Util::writeLog('sharing', "Can't send mail to inform the user about an internal share: " . $e->getMessage() , \OCP\Util::ERROR);
 				$noMail[] = $recipientDisplayName;
 			}
 		}
@@ -107,34 +130,37 @@ class MailNotifications {
 	}
 
 	/**
-	 * @brief inform recipient about public link share
+	 * inform recipient about public link share
 	 *
-	 * @param string recipient recipient email address
+	 * @param string $recipient recipient email address
 	 * @param string $filename the shared file
 	 * @param string $link the public link
 	 * @param int $expiration expiration date (timestamp)
-	 * @return mixed $result true or error message
+	 * @return array $result of failed recipients
 	 */
 	public function sendLinkShareMail($recipient, $filename, $link, $expiration) {
 		$subject = (string)$this->l->t('%s shared »%s« with you', array($this->senderDisplayName, $filename));
 		list($htmlMail, $alttextMail) = $this->createMailBody($filename, $link, $expiration);
-		try {
-			\OCP\Util::sendMail($recipient, $recipient, $subject, $htmlMail, $this->from, $this->senderDisplayName, 1, $alttextMail);
-		} catch (\Exception $e) {
-			\OCP\Util::writeLog('sharing', "Can't send mail with public link: " . $e->getMessage(), \OCP\Util::ERROR);
-			return $e->getMessage();
+		$rs = explode(' ', $recipient);
+		$failed = array();
+		foreach ($rs as $r) {
+			try {
+				\OCP\Util::sendMail($r, $r, $subject, $htmlMail, $this->from, $this->senderDisplayName, 1, $alttextMail);
+			} catch (\Exception $e) {
+				\OCP\Util::writeLog('sharing', "Can't send mail with public link to $r: " . $e->getMessage(), \OCP\Util::ERROR);
+				$failed[] = $r;
+			}
 		}
-
-		return true;
+		return $failed;
 	}
 
 	/**
-	 * @brief create mail body for plain text and html mail
+	 * create mail body for plain text and html mail
 	 *
 	 * @param string $filename the shared file
 	 * @param string $link link to the shared file
 	 * @param int $expiration expiration date (timestamp)
-	 * @return array with the html mail body and the plain text mail body
+	 * @return array an array of the html mail body and the plain text mail body
 	 */
 	private function createMailBody($filename, $link, $expiration) {
 

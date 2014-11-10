@@ -16,10 +16,10 @@ if (isset($_POST['allfiles']) and $_POST['allfiles'] === 'true') {
 	if ($dir === '' || $dir === '/') {
 		$dirListing = false;
 	}
-	foreach (OCA\Files_Trashbin\Helper::getTrashFiles($dir) as $file) {
+	foreach (OCA\Files_Trashbin\Helper::getTrashFiles($dir, \OCP\User::getUser()) as $file) {
 		$fileName = $file['name'];
 		if (!$dirListing) {
-			$fileName .= '.d' . $file['timestamp'];
+			$fileName .= '.d' . $file['mtime'];
 		}
 		$list[] = $fileName;
 	}

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!--[if lt IE 7]><html class="ng-csp ie ie6 lte9 lte8 lte7"><![endif]-->
-<!--[if IE 7]><html class="ng-csp ie ie7 lte9 lte8 lte7"><![endif]-->
-<!--[if IE 8]><html class="ng-csp ie ie8 lte9 lte8"><![endif]-->
-<!--[if IE 9]><html class="ng-csp ie ie9 lte9"><![endif]-->
-<!--[if gt IE 9]><html class="ng-csp ie"><![endif]-->
-<!--[if !IE]><!--><html class="ng-csp"><!--<![endif]-->
+<!--[if lt IE 7]><html class="ng-csp ie ie6 lte9 lte8 lte7" data-placeholder-focus="false"><![endif]-->
+<!--[if IE 7]><html class="ng-csp ie ie7 lte9 lte8 lte7" data-placeholder-focus="false"><![endif]-->
+<!--[if IE 8]><html class="ng-csp ie ie8 lte9 lte8" data-placeholder-focus="false"><![endif]-->
+<!--[if IE 9]><html class="ng-csp ie ie9 lte9" data-placeholder-focus="false"><![endif]-->
+<!--[if gt IE 9]><html class="ng-csp ie" data-placeholder-focus="false"><![endif]-->
+<!--[if !IE]><!--><html class="ng-csp" data-placeholder-focus="false"><!--<![endif]-->
 
 	<head data-user="<?php p($_['user_uid']); ?>" data-requesttoken="<?php p($_['requesttoken']); ?>">
 		<title>
@@ -14,8 +14,8 @@
 			?>
 		</title>
 		<meta charset="utf-8">
-		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0">
 		<meta name="apple-itunes-app" content="app-id=543672169">
 		<link rel="shortcut icon" href="<?php print_unescaped(image_path('', 'favicon.png')); ?>" />
 		<link rel="apple-touch-icon-precomposed" href="<?php print_unescaped(image_path('', 'favicon-touch.png')); ?>" />
@@ -35,9 +35,8 @@
 			?>
 		<?php endforeach; ?>
 	</head>
-
 	<body id="<?php p($_['bodyid']);?>">
-	<noscript><div id="nojavascript"><div><?php print_unescaped($l->t('This application requires JavaScript to be enabled for correct operation.  Please <a href="http://enable-javascript.com/" target="_blank">enable JavaScript</a> and re-load this interface.')); ?></div></div></noscript>
+	<noscript><div id="nojavascript"><div><?php print_unescaped($l->t('This application requires JavaScript for correct operation. Please <a href="http://enable-javascript.com/" target="_blank">enable JavaScript</a> and reload the page.')); ?></div></div></noscript>
 	<div id="notification-container">
 		<div id="notification"></div>
 		<?php if ($_['updateAvailable']): ?>
@@ -46,7 +45,19 @@
 	</div>
 	<header><div id="header">
 			<a href="<?php print_unescaped(link_to('', 'index.php')); ?>" title="" id="owncloud">
-				<div class='logo-wide'></div>
+				<div class="logo-icon svg"></div>
+			</a>
+			<a href="#" class="menutoggle">
+				<div class="header-appname">
+					<?php
+						if(OC_Util::getEditionString() === '') {
+							p(!empty($_['application'])?$_['application']: $l->t('Apps'));
+						} else {
+							print_unescaped($theme->getHTMLName());
+						}
+					?>
+				</div>
+				<div class="icon-caret svg"></div>
 			</a>
 			<div id="logo-claim" style="display:none;"><?php p($theme->getLogoClaim()); ?></div>
 			<div id="settings" class="svg">
@@ -87,12 +98,13 @@
 
 		<nav><div id="navigation">
 			<div id="apps" class="svg">
-				<ul class="wrapper"><!-- for sticky footer of apps management -->
+				<ul>
 				<?php foreach($_['navigation'] as $entry): ?>
 					<li data-id="<?php p($entry['id']); ?>">
 						<a href="<?php print_unescaped($entry['href']); ?>" title=""
 							<?php if( $entry['active'] ): ?> class="active"<?php endif; ?>>
-							<img class="icon svg" alt="" src="<?php print_unescaped($entry['icon']); ?>"/>
+							<img class="app-icon svg" alt="" src="<?php print_unescaped($entry['icon']); ?>"/>
+							<div class="icon-loading-dark" style="display:none;"></div>
 							<span>
 								<?php p($entry['name']); ?>
 							</span>
@@ -100,30 +112,26 @@
 					</li>
 				<?php endforeach; ?>
 
+				<!-- show "More apps" link to app administration directly in app navigation, as last entry -->
 				<?php if(OC_User::isAdminUser(OC_User::getUser())): ?>
-					<li class="push"></li><!-- for sticky footer of apps management -->
-				<?php endif; ?>
-				</ul>
-
-				<!-- show "More apps" link to app administration directly in app navigation, as sticky footer -->
-				<?php if(OC_User::isAdminUser(OC_User::getUser())): ?>
-				<ul id="apps-management">
-					<li>
+					<li id="apps-management">
 						<a href="<?php print_unescaped(OC_Helper::linkToRoute('settings_apps').'?installed'); ?>" title=""
 							<?php if( $_['appsmanagement_active'] ): ?> class="active"<?php endif; ?>>
-							<img class="icon svg" alt="" src="<?php print_unescaped(OC_Helper::imagePath('settings', 'apps.svg')); ?>"/>
+							<img class="app-icon svg" alt="" src="<?php print_unescaped(OC_Helper::imagePath('settings', 'apps.svg')); ?>"/>
+							<div class="icon-loading-dark" style="display:none;"></div>
 							<span>
 								<?php p($l->t('Apps')); ?>
 							</span>
 						</a>
 					</li>
-				</ul>
 				<?php endif; ?>
+
+				</ul>
 			</div>
 		</div></nav>
 
 		<div id="content-wrapper">
-			<div id="content">
+			<div id="content" class="app-<?php p($_['appid']) ?>">
 				<?php print_unescaped($_['content']); ?>
 			</div>
 		</div>

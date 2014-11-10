@@ -28,17 +28,15 @@ $TRANSLATIONS = array(
 "_%n day ago_::_%n days ago_" => array("","","",""),
 "last month" => "У мінулым месяцы",
 "_%n month ago_::_%n months ago_" => array("","","",""),
-"months ago" => "Месяцаў таму",
 "last year" => "У мінулым годзе",
 "years ago" => "Гадоў таму",
-"Choose" => "Выбар",
 "Yes" => "Так",
 "No" => "Не",
+"Choose" => "Выбар",
 "Ok" => "Добра",
 "_{count} file conflict_::_{count} file conflicts_" => array("","","",""),
 "Error" => "Памылка",
 "The object type is not specified." => "Тып аб'екта не ўдакладняецца.",
-"Advanced" => "Дасведчаны",
 "Finish setup" => "Завяршыць ўстаноўку."
 );
 $PLURAL_FORMS = "nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);";

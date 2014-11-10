@@ -16,9 +16,9 @@ class OC_Request {
 	const REGEX_LOCALHOST = '/^(127\.0\.0\.1|localhost)(:[0-9]+|)$/';
 
 	/**
-	 * @brief Check overwrite condition
+	 * Check overwrite condition
 	 * @param string $type
-	 * @returns bool
+	 * @return bool
 	 */
 	private static function isOverwriteCondition($type = '') {
 		$regex = '/' . OC_Config::getValue('overwritecondaddr', '')  . '/';
@@ -27,11 +27,11 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief Checks whether a domain is considered as trusted from the list
+	 * Checks whether a domain is considered as trusted from the list
 	 * of trusted domains. If no trusted domains have been configured, returns
 	 * true.
 	 * This is used to prevent Host Header Poisoning.
-	 * @param string $host
+	 * @param string $domain
 	 * @return bool true if the given domain is trusted or if no trusted domains
 	 * have been configured
 	 */
@@ -47,9 +47,9 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief Returns the unverified server host from the headers without checking
+	 * Returns the unverified server host from the headers without checking
 	 * whether it is a trusted domain
-	 * @returns string the server host
+	 * @return string the server host
 	 *
 	 * Returns the server host, even if the website uses one or more
 	 * reverse proxies
@@ -76,7 +76,7 @@ class OC_Request {
 	/**
 	 * Returns the overwritehost setting from the config if set and
 	 * if the overwrite condition is met
-	 * @return overwritehost value or null if not defined or the defined condition
+	 * @return string|null overwritehost value or null if not defined or the defined condition
 	 * isn't met
 	 */
 	public static function getOverwriteHost() {
@@ -87,15 +87,15 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief Returns the server host from the headers, or the first configured
+	 * Returns the server host from the headers, or the first configured
 	 * trusted domain if the host isn't in the trusted list
-	 * @returns string the server host
+	 * @return string the server host
 	 *
 	 * Returns the server host, even if the website uses one or more
 	 * reverse proxies
 	 */
 	public static function serverHost() {
-		if(OC::$CLI) {
+		if (OC::$CLI && defined('PHPUNIT_RUN')) {
 			return 'localhost';
 		}
 
@@ -120,8 +120,8 @@ class OC_Request {
 	}
 
 	/**
-	* @brief Returns the server protocol
-	* @returns string the server protocol
+	* Returns the server protocol
+	* @return string the server protocol
 	*
 	* Returns the server protocol. It respects reverse proxy servers and load balancers
 	*/
@@ -142,8 +142,8 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief Returns the request uri
-	 * @returns string the request uri
+	 * Returns the request uri
+	 * @return string the request uri
 	 *
 	 * Returns the request uri, even if the website uses one or more
 	 * reverse proxies
@@ -158,7 +158,7 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief Returns the script name
+	 * Returns the script name
 	 * @return string the script name
 	 *
 	 * Returns the script name, even if the website uses one or more
@@ -166,16 +166,17 @@ class OC_Request {
 	 */
 	public static function scriptName() {
 		$name = $_SERVER['SCRIPT_NAME'];
-		if (OC_Config::getValue('overwritewebroot', '') !== '' and self::isOverwriteCondition()) {
+		$overwriteWebRoot = OC_Config::getValue('overwritewebroot', '');
+		if ($overwriteWebRoot !== '' and self::isOverwriteCondition()) {
 			$serverroot = str_replace("\\", '/', substr(__DIR__, 0, -strlen('lib/private/')));
 			$suburi = str_replace("\\", "/", substr(realpath($_SERVER["SCRIPT_FILENAME"]), strlen($serverroot)));
-			$name = OC_Config::getValue('overwritewebroot', '') . $suburi;
+			$name = '/' . ltrim($overwriteWebRoot . $suburi, '/');
 		}
 		return $name;
 	}
 
 	/**
-	 * @brief get Path info from request
+	 * get Path info from request
 	 * @return string Path info or false when not found
 	 */
 	public static function getPathInfo() {
@@ -183,7 +184,7 @@ class OC_Request {
 			$path_info = $_SERVER['PATH_INFO'];
 		}else{
 			$path_info = self::getRawPathInfo();
-			// following is taken from Sabre_DAV_URLUtil::decodePathSegment
+			// following is taken from \Sabre\DAV\URLUtil::decodePathSegment
 			$path_info = rawurldecode($path_info);
 			$encoding = mb_detect_encoding($path_info, array('UTF-8', 'ISO-8859-1'));
 
@@ -199,11 +200,12 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief get Path info from request, not urldecoded
+	 * get Path info from request, not urldecoded
+	 * @throws Exception
 	 * @return string Path info or false when not found
 	 */
 	public static function getRawPathInfo() {
-		$requestUri = $_SERVER['REQUEST_URI'];
+		$requestUri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
 		// remove too many leading slashes - can be caused by reverse proxy configuration
 		if (strpos($requestUri, '/') === 0) {
 			$requestUri = '/' . ltrim($requestUri, '/');
@@ -218,7 +220,7 @@ class OC_Request {
 		$path_info = $requestUri;
 
 		// strip off the script name's dir and file name
-		list($path, $name) = \Sabre_DAV_URLUtil::splitPath($scriptName);
+		list($path, $name) = \Sabre\DAV\URLUtil::splitPath($scriptName);
 		if (!empty($path)) {
 			if( $path === $path_info || strpos($path_info, $path.'/') === 0) {
 				$path_info = substr($path_info, strlen($path));
@@ -240,7 +242,7 @@ class OC_Request {
 	}
 
 	/**
-	 * @brief Check if the requester sent along an mtime
+	 * Check if the requester sent along an mtime
 	 * @return false or an mtime
 	 */
 	static public function hasModificationTime () {

@@ -59,7 +59,7 @@ class Base {
 	}
 
 	/**
-	 * @brief Assign variables
+	 * Assign variables
 	 * @param string $key key
 	 * @param array|bool|integer|string $value value
 	 * @return bool
@@ -75,9 +75,9 @@ class Base {
 	}
 
 	/**
-	 * @brief Appends a variable
+	 * Appends a variable
 	 * @param string $key key
-	 * @param string $value value
+	 * @param mixed $value value
 	 * @return boolean|null
 	 *
 	 * This function assigns a variable in an array context. If the key already
@@ -94,7 +94,7 @@ class Base {
 	}
 
 	/**
-	 * @brief Prints the proceeded template
+	 * Prints the proceeded template
 	 * @return bool
 	 *
 	 * This function proceeds the template and prints its output.
@@ -111,7 +111,7 @@ class Base {
 	}
 
 	/**
-	 * @brief Process the template
+	 * Process the template
 	 * @return string
 	 *
 	 * This function processes the template.
@@ -121,7 +121,7 @@ class Base {
 	}
 
 	/**
-	 * @brief doing the actual work
+	 * doing the actual work
 	 * @param string $file
 	 * @return string content
 	 *

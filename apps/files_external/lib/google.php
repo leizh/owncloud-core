@@ -52,6 +52,7 @@ class Google extends \OC\Files\Storage\Common {
 			$client->setScopes(array('https://www.googleapis.com/auth/drive'));
 			$client->setUseObjects(true);
 			$client->setAccessToken($params['token']);
+			// note: API connection is lazy
 			$this->service = new \Google_DriveService($client);
 			$token = json_decode($params['token'], true);
 			$this->id = 'google::'.substr($params['client_id'], 0, 30).$token['created'];
@@ -584,6 +585,17 @@ class Google extends \OC\Files\Storage\Common {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * check if curl is installed
+	 */
+	public static function checkDependencies() {
+		if (function_exists('curl_init')) {
+			return true;
+		} else {
+			return array('curl');
+		}
 	}
 
 }

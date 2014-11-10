@@ -8,6 +8,12 @@
 
 /**
  * small wrapper around \Doctrine\DBAL\Driver\Statement to make it behave, more like an MDB2 Statement
+ *
+ * @method boolean bindValue(mixed $param, mixed $value, integer $type = null);
+ * @method string errorCode();
+ * @method array errorInfo();
+ * @method integer rowCount();
+ * @method array fetchAll(integer $fetchMode = null);
  */
 class OC_DB_StatementWrapper {
 	/**
@@ -36,7 +42,7 @@ class OC_DB_StatementWrapper {
 	 * make execute return the result instead of a bool
 	 *
 	 * @param array $input
-	 * @return \OC_DB_StatementWrapper | int
+	 * @return \OC_DB_StatementWrapper|int
 	 */
 	public function execute($input=array()) {
 		if(OC_Config::getValue( "log_query", false)) {
@@ -161,6 +167,8 @@ class OC_DB_StatementWrapper {
     
 	/**
 	 * provide an alias for fetch
+	 *
+	 * @return mixed
 	 */
 	public function fetchRow() {
 		return $this->statement->fetch();
@@ -168,12 +176,13 @@ class OC_DB_StatementWrapper {
 
 	/**
 	 * Provide a simple fetchOne.
+	 *
 	 * fetch single column from the next row
-	 * @param int $colnum the column number to fetch
+	 * @param int $column the column number to fetch
 	 * @return string
 	 */
-	public function fetchOne($colnum = 0) {
-		return $this->statement->fetchColumn($colnum);
+	public function fetchOne($column = 0) {
+		return $this->statement->fetchColumn($column);
 	}
 
 	/**

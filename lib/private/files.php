@@ -49,7 +49,7 @@ class OC_Files {
 			header('Content-Type: application/zip');
 		} else {
 			$filesize = \OC\Files\Filesystem::filesize($filename);
-			header('Content-Type: '.\OC\Files\Filesystem::getMimeType($filename));
+			header('Content-Type: '.\OC_Helper::getSecureMimeType(\OC\Files\Filesystem::getMimeType($filename)));
 			if ($filesize > -1) {
 				header("Content-Length: ".$filesize);
 			}
@@ -108,7 +108,6 @@ class OC_Files {
 				$xsendfile = false;
 			}
 		} else {
-			self::validateZipDownload($dir, $files);
 			$zip = new ZipStreamer(false);
 		}
 		OC_Util::obEnd();
@@ -117,7 +116,6 @@ class OC_Files {
 		} elseif (!\OC\Files\Filesystem::file_exists($filename)) {
 			header("HTTP/1.0 404 Not Found");
 			$tmpl = new OC_Template('', '404', 'guest');
-			$tmpl->assign('file', $name);
 			$tmpl->printPage();
 		} else {
 			header("HTTP/1.0 403 Forbidden");
@@ -148,10 +146,11 @@ class OC_Files {
 			set_time_limit($executionTime);
 		} else {
 			if ($xsendfile) {
+				$view = \OC\Files\Filesystem::getView();
 				/** @var $storage \OC\Files\Storage\Storage */
-				list($storage) = \OC\Files\Filesystem::resolvePath($filename);
+				list($storage) = $view->resolvePath($filename);
 				if ($storage->isLocal()) {
-					self::addSendfileHeader(\OC\Files\Filesystem::getLocalFile($filename));
+					self::addSendfileHeader($filename);
 				} else {
 					\OC\Files\Filesystem::readfile($filename);
 				}
@@ -166,9 +165,11 @@ class OC_Files {
 	 */
 	private static function addSendfileHeader($filename) {
 		if (isset($_SERVER['MOD_X_SENDFILE_ENABLED'])) {
+			$filename = \OC\Files\Filesystem::getLocalFile($filename);
 			header("X-Sendfile: " . $filename);
  		}
  		if (isset($_SERVER['MOD_X_SENDFILE2_ENABLED'])) {
+			$filename = \OC\Files\Filesystem::getLocalFile($filename);
 			if (isset($_SERVER['HTTP_RANGE']) &&
 				preg_match("/^bytes=([0-9]+)-([0-9]*)$/", $_SERVER['HTTP_RANGE'], $range)) {
 				$filelength = filesize($filename);
@@ -184,6 +185,7 @@ class OC_Files {
 		}
 
 		if (isset($_SERVER['MOD_X_ACCEL_REDIRECT_ENABLED'])) {
+			$filename = \OC::$WEBROOT . '/data' . \OC\Files\Filesystem::getRoot() . $filename;
 			header("X-Accel-Redirect: " . $filename);
 		}
 	}
@@ -218,54 +220,6 @@ class OC_Files {
 	}
 
 	/**
-	 * checks if the selected files are within the size constraint. If not, outputs an error page.
-	 *
-	 * @param string $dir
-	 * @param array | string $files
-	 */
-	static function validateZipDownload($dir, $files) {
-		if (!OC_Config::getValue('allowZipDownload', true)) {
-			$l = OC_L10N::get('lib');
-			header("HTTP/1.0 409 Conflict");
-			OC_Template::printErrorPage(
-					$l->t('ZIP download is turned off.'),
-					$l->t('Files need to be downloaded one by one.')
-						. '<br/><a href="javascript:history.back()">' . $l->t('Back to Files') . '</a>'
-			);
-			exit;
-		}
-
-		$zipLimit = OC_Config::getValue('maxZipInputSize', OC_Helper::computerFileSize('800 MB'));
-		if ($zipLimit > 0) {
-			$totalsize = 0;
-			if(!is_array($files)) {
-				$files = array($files);
-			}
-			foreach ($files as $file) {
-				$path = $dir . '/' . $file;
-				if(\OC\Files\Filesystem::is_dir($path)) {
-					foreach (\OC\Files\Filesystem::getDirectoryContent($path) as $i) {
-						$totalsize += $i['size'];
-					}
-				} else {
-					$totalsize += \OC\Files\Filesystem::filesize($path);
-				}
-			}
-			if ($totalsize > $zipLimit) {
-				$l = OC_L10N::get('lib');
-				header("HTTP/1.0 409 Conflict");
-				OC_Template::printErrorPage(
-						$l->t('Selected files too large to generate zip file.'),
-						$l->t('Please download the files separately in smaller chunks or kindly ask your administrator.')
-						.'<br/><a href="javascript:history.back()">'
-						. $l->t('Back to Files') . '</a>'
-				);
-				exit;
-			}
-		}
-	}
-
-	/**
 	 * set the maximum upload size limit for apache hosts using .htaccess
 	 *
 	 * @param int $size file size in bytes
@@ -279,9 +233,7 @@ class OC_Files {
 				return false;
 			$size -= 1;
 		} else {
-			$size = OC_Helper::humanFileSize($size);
-			$size = substr($size, 0, -1); //strip the B
-			$size = str_replace(' ', '', $size); //remove the space between the size and the postfix
+			$size = OC_Helper::phpFileSize($size);
 		}
 
 		//don't allow user to break his config -- broken or malicious size input

@@ -19,7 +19,6 @@
 *
 */
 
-/* global OC */
 describe('Core base tests', function() {
 	describe('Base values', function() {
 		it('Sets webroots', function() {
@@ -124,6 +123,37 @@ describe('Core base tests', function() {
 			expect(OC.dirname('/subdir/')).toEqual('/subdir');
 		});
 	});
+	describe('escapeHTML', function() {
+		it('Returns nothing if no string was given', function() {
+			expect(escapeHTML('')).toEqual('');
+		});
+		it('Returns a sanitized string if a string containing HTML is given', function() {
+			expect(escapeHTML('There needs to be a <script>alert(\"Unit\" + \'test\')</script> for it!')).toEqual('There needs to be a &lt;script&gt;alert(&quot;Unit&quot; + &#039;test&#039;)&lt;/script&gt; for it!');
+		});
+		it('Returns the string without modification if no potentially dangerous character is passed.', function() {
+			expect(escapeHTML('This is a good string without HTML.')).toEqual('This is a good string without HTML.');
+		});
+	});
+	describe('filePath', function() {
+		beforeEach(function() {
+			OC.webroot = 'http://localhost';
+			OC.appswebroots['files'] = OC.webroot + '/apps3/files';
+		});
+		afterEach(function() {
+			delete OC.appswebroots['files'];
+		});
+
+		it('Uses a direct link for css and images,' , function() {
+			expect(OC.filePath('core', 'css', 'style.css')).toEqual('http://localhost/core/css/style.css');
+			expect(OC.filePath('files', 'css', 'style.css')).toEqual('http://localhost/apps3/files/css/style.css');
+			expect(OC.filePath('core', 'img', 'image.png')).toEqual('http://localhost/core/img/image.png');
+			expect(OC.filePath('files', 'img', 'image.png')).toEqual('http://localhost/apps3/files/img/image.png');
+		});
+		it('Routes PHP files via index.php,' , function() {
+			expect(OC.filePath('core', 'ajax', 'test.php')).toEqual('http://localhost/index.php/core/ajax/test.php');
+			expect(OC.filePath('files', 'ajax', 'test.php')).toEqual('http://localhost/index.php/apps/files/ajax/test.php');
+		});
+	});
 	describe('Link functions', function() {
 		var TESTAPP = 'testapp';
 		var TESTAPP_ROOT = OC.webroot + '/appsx/testapp';
@@ -147,19 +177,19 @@ describe('Core base tests', function() {
 		});
 		describe('Images', function() {
 			it('Generates image path with given extension', function() {
-				var svgSupportStub = sinon.stub(window, 'SVGSupport', function() { return true; });
+				var svgSupportStub = sinon.stub(OC.Util, 'hasSVGSupport', function() { return true; });
 				expect(OC.imagePath('core', 'somefile.jpg')).toEqual(OC.webroot + '/core/img/somefile.jpg');
 				expect(OC.imagePath(TESTAPP, 'somefile.jpg')).toEqual(TESTAPP_ROOT + '/img/somefile.jpg');
 				svgSupportStub.restore();
 			});
 			it('Generates image path with svg extension when svg support exists', function() {
-				var svgSupportStub = sinon.stub(window, 'SVGSupport', function() { return true; });
+				var svgSupportStub = sinon.stub(OC.Util, 'hasSVGSupport', function() { return true; });
 				expect(OC.imagePath('core', 'somefile')).toEqual(OC.webroot + '/core/img/somefile.svg');
 				expect(OC.imagePath(TESTAPP, 'somefile')).toEqual(TESTAPP_ROOT + '/img/somefile.svg');
 				svgSupportStub.restore();
 			});
 			it('Generates image path with png ext when svg support is not available', function() {
-				var svgSupportStub = sinon.stub(window, 'SVGSupport', function() { return false; });
+				var svgSupportStub = sinon.stub(OC.Util, 'hasSVGSupport', function() { return false; });
 				expect(OC.imagePath('core', 'somefile')).toEqual(OC.webroot + '/core/img/somefile.png');
 				expect(OC.imagePath(TESTAPP, 'somefile')).toEqual(TESTAPP_ROOT + '/img/somefile.png');
 				svgSupportStub.restore();
@@ -182,24 +212,24 @@ describe('Core base tests', function() {
 				unicode: '汉字'
 			})).toEqual('unicode=%E6%B1%89%E5%AD%97');
 			expect(OC.buildQueryString({
-			   	b: 'spaace value',
-			   	'space key': 'normalvalue',
-			   	'slash/this': 'amp&ersand'
+				b: 'spaace value',
+				'space key': 'normalvalue',
+				'slash/this': 'amp&ersand'
 			})).toEqual('b=spaace%20value&space%20key=normalvalue&slash%2Fthis=amp%26ersand');
 		});
 		it('Encodes data types and empty values', function() {
 			expect(OC.buildQueryString({
 				'keywithemptystring': '',
-			   	'keywithnull': null,
-			   	'keywithundefined': null,
+				'keywithnull': null,
+				'keywithundefined': null,
 				something: 'else'
 			})).toEqual('keywithemptystring=&keywithnull&keywithundefined&something=else');
 			expect(OC.buildQueryString({
-			   	'booleanfalse': false,
+				'booleanfalse': false,
 				'booleantrue': true
 			})).toEqual('booleanfalse=false&booleantrue=true');
 			expect(OC.buildQueryString({
-			   	'number': 123
+				'number': 123
 			})).toEqual('number=123');
 		});
 	});
@@ -224,10 +254,12 @@ describe('Core base tests', function() {
 		});
 		afterEach(function() {
 			clock.restore();
+			/* jshint camelcase: false */
 			window.oc_config = oldConfig;
 			routeStub.restore();
 		});
 		it('sends heartbeat half the session lifetime when heartbeat enabled', function() {
+			/* jshint camelcase: false */
 			window.oc_config = {
 				session_keepalive: true,
 				session_lifetime: 300
@@ -254,6 +286,7 @@ describe('Core base tests', function() {
 			expect(counter).toEqual(2);
 		});
 		it('does no send heartbeat when heartbeat disabled', function() {
+			/* jshint camelcase: false */
 			window.oc_config = {
 				session_keepalive: false,
 				session_lifetime: 300
@@ -268,7 +301,92 @@ describe('Core base tests', function() {
 			// still nothing
 			expect(counter).toEqual(0);
 		});
+		it('limits the heartbeat between one minute and one day', function() {
+			/* jshint camelcase: false */
+			var setIntervalStub = sinon.stub(window, 'setInterval');
+			window.oc_config = {
+				session_keepalive: true,
+				session_lifetime: 5
+			};
+			window.initCore();
+			expect(setIntervalStub.getCall(0).args[1]).toEqual(60 * 1000);
+			setIntervalStub.reset();
 
+			window.oc_config = {
+				session_keepalive: true,
+				session_lifetime: 48 * 3600
+			};
+			window.initCore();
+			expect(setIntervalStub.getCall(0).args[1]).toEqual(24 * 3600 * 1000);
+
+			setIntervalStub.restore();
+		});
+	});
+	describe('Parse query string', function() {
+		it('Parses query string from full URL', function() {
+			var query = OC.parseQueryString('http://localhost/stuff.php?q=a&b=x');
+			expect(query).toEqual({q: 'a', b: 'x'});
+		});
+		it('Parses query string from query part alone', function() {
+			var query = OC.parseQueryString('q=a&b=x');
+			expect(query).toEqual({q: 'a', b: 'x'});
+		});
+		it('Returns null hash when empty query', function() {
+			var query = OC.parseQueryString('');
+			expect(query).toEqual(null);
+		});
+		it('Returns empty hash when empty query with question mark', function() {
+			var query = OC.parseQueryString('?');
+			expect(query).toEqual({});
+		});
+		it('Decodes regular query strings', function() {
+			var query = OC.parseQueryString('a=abc&b=def');
+			expect(query).toEqual({
+				a: 'abc',
+				b: 'def'
+			});
+		});
+		it('Ignores empty parts', function() {
+			var query = OC.parseQueryString('&q=a&&b=x&');
+			expect(query).toEqual({q: 'a', b: 'x'});
+		});
+		it('Ignores lone equal signs', function() {
+			var query = OC.parseQueryString('&q=a&=&b=x&');
+			expect(query).toEqual({q: 'a', b: 'x'});
+		});
+		it('Includes extra equal signs in value', function() {
+			var query = OC.parseQueryString('u=a=x&q=a=b');
+			expect(query).toEqual({u: 'a=x', q: 'a=b'});
+		});
+		it('Decodes plus as space', function() {
+			var query = OC.parseQueryString('space+key=space+value');
+			expect(query).toEqual({'space key': 'space value'});
+		});
+		it('Decodes special characters', function() {
+			var query = OC.parseQueryString('unicode=%E6%B1%89%E5%AD%97');
+			expect(query).toEqual({unicode: '汉字'});
+			query = OC.parseQueryString('b=spaace%20value&space%20key=normalvalue&slash%2Fthis=amp%26ersand');
+			expect(query).toEqual({
+				b: 'spaace value',
+				'space key': 'normalvalue',
+				'slash/this': 'amp&ersand'
+			});
+		});
+		it('Decodes empty values', function() {
+			var query = OC.parseQueryString('keywithemptystring=&keywithnostring');
+			expect(query).toEqual({
+				'keywithemptystring': '',
+				'keywithnostring': null
+			});
+		});
+		it('Does not interpret data types', function() {
+			var query = OC.parseQueryString('booleanfalse=false&booleantrue=true&number=123');
+			expect(query).toEqual({
+				'booleanfalse': 'false',
+				'booleantrue': 'true',
+				'number': '123'
+			});
+		});
 	});
 	describe('Generate Url', function() {
 		it('returns absolute urls', function() {
@@ -277,6 +395,102 @@ describe('Core base tests', function() {
 		});
 		it('substitutes parameters', function() {
 			expect(OC.generateUrl('apps/files/download{file}', {file: '/Welcome.txt'})).toEqual(OC.webroot + '/index.php/apps/files/download/Welcome.txt');
+		});
+	});
+	describe('Main menu mobile toggle', function() {
+		var clock;
+		var $toggle;
+		var $navigation;
+		var clock;
+
+		beforeEach(function() {
+			clock = sinon.useFakeTimers();
+			$('#testArea').append('<div id="header">' +
+				'<a class="menutoggle" href="#"></a>' +
+				'</div>' +
+				'<div id="navigation"></div>');
+			$toggle = $('#header').find('.menutoggle');
+			$navigation = $('#navigation');
+		});
+		afterEach(function() {
+			clock.restore();
+		});
+		it('Sets up menu toggle', function() {
+			window.initCore();
+			expect($navigation.hasClass('menu')).toEqual(true);
+		});
+		it('Clicking menu toggle toggles navigation in', function() {
+			window.initCore();
+			$navigation.hide(); // normally done through media query triggered CSS
+			expect($navigation.is(':visible')).toEqual(false);
+			$toggle.click();
+			clock.tick(1 * 1000);
+			expect($navigation.is(':visible')).toEqual(true);
+			$toggle.click();
+			clock.tick(1 * 1000);
+			expect($navigation.is(':visible')).toEqual(false);
+		});
+	});
+	describe('SVG extension replacement', function() {
+		var svgSupportStub;
+
+		beforeEach(function() {
+			svgSupportStub = sinon.stub(OC.Util, 'hasSVGSupport');
+		});
+		afterEach(function() {
+			svgSupportStub.restore();
+		});
+		it('does not replace svg extension with png when SVG is supported', function() {
+			svgSupportStub.returns(true);
+			expect(
+				OC.Util.replaceSVGIcon('/path/to/myicon.svg?someargs=1')
+			).toEqual(
+				'/path/to/myicon.svg?someargs=1'
+			);
+		});
+		it('replaces svg extension with png when SVG not supported', function() {
+			svgSupportStub.returns(false);
+			expect(
+				OC.Util.replaceSVGIcon('/path/to/myicon.svg?someargs=1')
+			).toEqual(
+				'/path/to/myicon.png?someargs=1'
+			);
+		});
+	});
+	describe('Util', function() {
+		describe('humanFileSize', function() {
+			it('renders file sizes with the correct unit', function() {
+				var data = [
+					[0, '0 B'],
+					[125, '125 B'],
+					[128000, '125 kB'],
+					[128000000, '122.1 MB'],
+					[128000000000, '119.2 GB'],
+					[128000000000000, '116.4 TB']
+				];
+				for (var i = 0; i < data.length; i++) {
+					expect(OC.Util.humanFileSize(data[i][0])).toEqual(data[i][1]);
+				}
+			});
+			it('renders file sizes with the correct unit for small sizes', function() {
+				var data = [
+					[0, '0 kB'],
+					[125, '< 1 kB'],
+					[128000, '125 kB'],
+					[128000000, '122.1 MB'],
+					[128000000000, '119.2 GB'],
+					[128000000000000, '116.4 TB']
+				];
+				for (var i = 0; i < data.length; i++) {
+					expect(OC.Util.humanFileSize(data[i][0], true)).toEqual(data[i][1]);
+				}
+			});
+		});
+		describe('stripTime', function() {
+			it('strips time from dates', function() {
+				expect(OC.Util.stripTime(new Date(2014, 2, 24, 15, 4, 45, 24)))
+					.toEqual(new Date(2014, 2, 24, 0, 0, 0, 0));
+			});
 		});
 	});
 });
