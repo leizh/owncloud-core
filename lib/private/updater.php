@@ -100,6 +100,7 @@ class Updater extends BasicEmitter {
 		);
 		$xml = @file_get_contents($url, 0, $ctx);
 		if ($xml == false) {
+			\OC_Appconfig::setValue('core', 'lastupdateResult', json_encode(array()));
 			return array();
 		}
 		$loadEntities = libxml_disable_entity_loader(true);
@@ -262,7 +263,6 @@ class Updater extends BasicEmitter {
 	protected function checkAppUpgrade($version) {
 		$apps = \OC_App::getEnabledApps();
 
-
 		foreach ($apps as $appId) {
 			if ($version) {
 				$info = \OC_App::getAppInfo($appId);
@@ -272,6 +272,15 @@ class Updater extends BasicEmitter {
 			}
 
 			if ($compatible && \OC_App::shouldUpgrade($appId)) {
+				/**
+				 * FIXME: The preupdate check is performed before the database migration, otherwise database changes
+				 * are not possible anymore within it. - Consider this when touching the code.
+				 * @link https://github.com/owncloud/core/issues/10980
+				 * @see \OC_App::updateApp
+				 */
+				if (file_exists(\OC_App::getAppPath($appId) . '/appinfo/preupdate.php')) {
+					$this->includePreUpdate($appId);
+				}
 				if (file_exists(\OC_App::getAppPath($appId) . '/appinfo/database.xml')) {
 					\OC_DB::simulateUpdateDbFromStructure(\OC_App::getAppPath($appId) . '/appinfo/database.xml');
 				}
@@ -279,6 +288,14 @@ class Updater extends BasicEmitter {
 		}
 
 		$this->emit('\OC\Updater', 'appUpgradeCheck');
+	}
+
+	/**
+	 * Includes the pre-update file. Done here to prevent namespace mixups.
+	 * @param string $appId
+	 */
+	private function includePreUpdate($appId) {
+		include \OC_App::getAppPath($appId) . '/appinfo/preupdate.php';
 	}
 
 	protected function doAppUpgrade() {

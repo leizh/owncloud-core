@@ -98,9 +98,10 @@ class Test_User_Ldap_Direct extends \PHPUnit_Framework_TestCase {
 	/**
 	 * Prepares the Access mock for checkPassword tests
 	 * @param \OCA\user_ldap\lib\Access $access mock
+	 * @param bool noDisplayName
 	 * @return void
 	 */
-	private function prepareAccessForCheckPassword(&$access) {
+	private function prepareAccessForCheckPassword(&$access, $noDisplayName = false) {
 		$access->expects($this->once())
 			   ->method('escapeFilterPart')
 			   ->will($this->returnCallback(function($uid) {
@@ -120,15 +121,19 @@ class Test_User_Ldap_Direct extends \PHPUnit_Framework_TestCase {
 			   ->method('fetchListOfUsers')
 			   ->will($this->returnCallback(function($filter) {
 					if($filter === 'roland') {
-						return array('dnOfRoland,dc=test');
+						return array(array('dn' => 'dnOfRoland,dc=test'));
 					}
 					return array();
 			   }));
 
+		$retVal = 'gunslinger';
+		if($noDisplayName === true) {
+			$retVal = false;
+		}
 		$access->expects($this->any())
 			   ->method('dn2username')
 			   ->with($this->equalTo('dnOfRoland,dc=test'))
-			   ->will($this->returnValue('gunslinger'));
+			   ->will($this->returnValue($retVal));
 
 		$access->expects($this->any())
 			   ->method('stringResemblesDN')
@@ -178,6 +183,21 @@ class Test_User_Ldap_Direct extends \PHPUnit_Framework_TestCase {
 		$this->assertFalse($result);
 	}
 
+	public function testCheckPasswordNoDisplayName() {
+		$access = $this->getAccessMock();
+
+		$this->prepareAccessForCheckPassword($access, true);
+		$access->expects($this->once())
+			->method('username2dn')
+			->will($this->returnValue(false));
+
+		$backend = new UserLDAP($access);
+		\OC_User::useBackend($backend);
+
+		$result = $backend->checkPassword('roland', 'dt19');
+		$this->assertFalse($result);
+	}
+
 	public function testCheckPasswordPublicAPI() {
 		$access = $this->getAccessMock();
 		$this->prepareAccessForCheckPassword($access);
@@ -206,6 +226,24 @@ class Test_User_Ldap_Direct extends \PHPUnit_Framework_TestCase {
 
 		$result = \OCP\User::checkPassword('mallory', 'evil');
 		$this->assertFalse($result);
+	}
+
+	public function testDeleteUserCancel() {
+		$access = $this->getAccessMock();
+		$backend = new UserLDAP($access);
+		$result = $backend->deleteUser('notme');
+		$this->assertFalse($result);
+	}
+
+	public function testDeleteUserSuccess() {
+		$access = $this->getAccessMock();
+		$backend = new UserLDAP($access);
+
+		$pref = \OC::$server->getConfig();
+		$pref->setUserValue('jeremy', 'user_ldap', 'isDeleted', 1);
+
+		$result = $backend->deleteUser('jeremy');
+		$this->assertTrue($result);
 	}
 
 	/**
